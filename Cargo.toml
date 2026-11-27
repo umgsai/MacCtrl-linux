@@ -39,5 +39,13 @@ assets = [
     ["packaging/macctrl.desktop", "usr/share/applications/macctrl.desktop", "644"],
     ["packaging/99-uinput.rules", "lib/udev/rules.d/99-uinput.rules", "644"],
     ["packaging/icons/macctrl.png", "usr/share/icons/hicolor/32x32/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-16.png", "usr/share/icons/hicolor/16x16/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-22.png", "usr/share/icons/hicolor/22x22/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-24.png", "usr/share/icons/hicolor/24x24/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-48.png", "usr/share/icons/hicolor/48x48/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-64.png", "usr/share/icons/hicolor/64x64/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-128.png", "usr/share/icons/hicolor/128x128/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl-256.png", "usr/share/icons/hicolor/256x256/apps/macctrl.png", "644"],
+    ["packaging/icons/macctrl.svg", "usr/share/icons/hicolor/scalable/apps/macctrl.svg", "644"],
     ["config/config.toml", "etc/macctrl/config.toml", "644"],
 ]

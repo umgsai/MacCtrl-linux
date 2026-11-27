@@ -156,7 +156,8 @@ packaging/
   macctrl.service      # systemd 用户级服务
   macctrl.desktop      # 桌面应用入口（点击启动服务）
   99-uinput.rules       # udev 权限规则
-  icons/macctrl.png
+  icons/macctrl.svg    # 矢量图标源（由 32px 原图几何重绘）
+  icons/macctrl-*.png  # 16/22/24/48/64/128/256 各尺寸导出
 
 config/
   config.toml           # 示例配置

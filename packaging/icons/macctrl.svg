@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- MacCtrl 图标：Command(⌘) 符号，几何重绘版 -->
+  <g fill="none" stroke="#3274EE" stroke-width="2.7" stroke-linecap="round">
+    <!-- 中央方框四边 -->
+    <path d="M6.2 10H25.8"/>
+    <path d="M6.2 22H25.8"/>
+    <path d="M10 6.2V25.8"/>
+    <path d="M22 6.2V25.8"/>
+    <!-- 四角外翻环 -->
+    <path d="M6.2 10A3.8 3.8 0 1 1 10 6.2"/>
+    <path d="M25.8 10A3.8 3.8 0 1 0 22 6.2"/>
+    <path d="M10 25.8A3.8 3.8 0 1 1 6.2 22"/>
+    <path d="M22 25.8A3.8 3.8 0 1 0 25.8 22"/>
+  </g>
+</svg>
