@@ -1,4 +1,4 @@
-# cmd2ctrl 设计文档
+# macctrl 设计文档
 
 - 日期：2026-11-27
 - 目标平台：Linux / X11（不限发行版与桌面环境；Deepin 25 + DDE 仅为当前验证环境）
@@ -66,7 +66,7 @@
         │ 能力检测后 EVIOCGRAB 独占抓取（每设备一个读取线程）
         ▼
 ┌──────────────────────────────────────────────────┐
-│ cmd2ctrl 守护进程                                 │
+│ macctrl 守护进程                                 │
 │   device   枚举所有键盘型设备、能力检测、热插拔重扫   │
 │   state    每设备一个延迟修饰键状态机（纯函数，可单测）│
 │   focus    X11 焦点查询：_NET_ACTIVE_WINDOW → WM_CLASS │
@@ -228,7 +228,7 @@ id 命名规则为 `cmd-<键>` / `cmd-shift-<键>`，配置与命令行都用它
 
 ## 8. 配置
 
-路径：`~/.config/cmd2ctrl/config.toml`（不存在时使用内置默认值）。
+路径：`~/.config/macctrl/config.toml`（不存在时使用内置默认值）。
 
 ```toml
 [device]
@@ -281,7 +281,7 @@ terminal = ""           # 空字符串 = 终端中透传
 ## 9. CLI
 
 ```
-cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list-bindings]
+macctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list-bindings]
          [--enable <id>]... [--disable <id>]... [--dry-run] [--verbose]
 
   --list-devices    列出所有事件设备：名称、路径、VID:PID、是否被判为键盘、是否可读
@@ -310,10 +310,10 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list
    - 变体：若发行版使用 `uinput` 专用组或已有预置规则，按 `ls -l /dev/uinput` 的属组加入对应组。
    - 变体：无法改权限时，以 root 运行同一二进制（文档注明，不作为默认路径）。
 
-4. `cargo build --release`，二进制安装到 `~/.local/bin/cmd2ctrl`（或任意 `PATH` 内路径）。
+4. `cargo build --release`，二进制安装到 `~/.local/bin/macctrl`（或任意 `PATH` 内路径）。
 
 5. 设置登录自启，二选一：
-   - **systemd 发行版**：user 服务 `~/.config/systemd/user/cmd2ctrl.service`：
+   - **systemd 发行版**：user 服务 `~/.config/systemd/user/macctrl.service`：
 
      ```ini
      [Unit]
@@ -322,7 +322,7 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list
      PartOf=graphical-session.target
 
      [Service]
-     ExecStart=%h/.local/bin/cmd2ctrl
+     ExecStart=%h/.local/bin/macctrl
      Restart=on-failure
      RestartSec=3
 
@@ -330,8 +330,8 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list
      WantedBy=graphical-session.target
      ```
 
-     启用：`systemctl --user daemon-reload && systemctl --user enable --now cmd2ctrl`。
-   - **非 systemd 或需要跟随具体桌面会话**：`~/.config/autostart/cmd2ctrl.desktop`，`Exec=.../cmd2ctrl`，由 XDG autostart 拉起。
+     启用：`systemctl --user daemon-reload && systemctl --user enable --now macctrl`。
+   - **非 systemd 或需要跟随具体桌面会话**：`~/.config/autostart/macctrl.desktop`，`Exec=.../macctrl`，由 XDG autostart 拉起。
 
 6. 启动时检测 `XDG_SESSION_TYPE`；非 `x11` 时打印明确提示并以非零码退出（避免在 Wayland 下静默失效）。
 
@@ -380,7 +380,7 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list
 ## 13. 工程结构
 
 ```
-cmd2ctrl-linux/
+macctrl-linux/
 ├── Cargo.toml
 ├── src/
 │   ├── main.rs        # CLI 解析、组件装配、事件循环
@@ -393,9 +393,9 @@ cmd2ctrl-linux/
 ├── config/config.toml # 示例配置
 ├── packaging/
 │   ├── 99-uinput.rules
-│   ├── cmd2ctrl.service
-│   └── cmd2ctrl.desktop
-└── docs/superpowers/specs/2026-11-27-cmd2ctrl-design.md
+│   ├── macctrl.service
+│   └── macctrl.desktop
+└── docs/superpowers/specs/2026-11-27-macctrl-design.md
 ```
 
 依赖：`evdev`（含 uinput 支持）、`x11rb`、`clap`、`serde`、`toml`、`anyhow`、`log` + `env_logger`。

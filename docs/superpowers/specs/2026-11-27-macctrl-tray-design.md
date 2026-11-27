@@ -1,12 +1,12 @@
-# cmd2ctrl 托盘图标设计
+# macctrl 托盘图标设计
 
 **状态:** 已批准  
 **日期:** 2026-11-27  
-**关联:** [cmd2ctrl 主设计](./2026-11-27-cmd2ctrl-design.md)
+**关联:** [macctrl 主设计](./2026-11-27-macctrl-design.md)
 
 ## 目标
 
-cmd2ctrl 作为后台常驻进程运行时，在系统托盘（StatusNotifier）显示图标和菜单，提供运行时控制入口。
+macctrl 作为后台常驻进程运行时，在系统托盘（StatusNotifier）显示图标和菜单，提供运行时控制入口。
 
 ## 非目标（YAGNI）
 
@@ -145,7 +145,7 @@ runner 原来持有 `Arc<BindingTable>` 常量引用。Reload 需要替换为新
 
 | 序号 | 菜单项 | 类型 | 行为 |
 |---|---|---|---|
-| 1 | `cmd2ctrl v0.1.0 — 运行中 · 3 键盘 · 42/60 绑定` | 标题（不可选） | tooltip 副标题，托盘每 2 秒刷新 |
+| 1 | `macctrl v0.1.0 — 运行中 · 3 键盘 · 42/60 绑定` | 标题（不可选） | tooltip 副标题，托盘每 2 秒刷新 |
 | 2 | `□ 暂停/继续` | CheckboxMenuItem | TogglePause |
 | 3 | `重载配置` | MenuItem | ReloadConfig |
 | 4 | `列出绑定…` | MenuItem | 托盘线程弹 gtk::MessageDialog（用 list_bindings_text） |
@@ -157,7 +157,7 @@ runner 原来持有 `Arc<BindingTable>` 常量引用。Reload 需要替换为新
 
 - 内置 16x16 / 22x22 / 32x32 PNG 三张（激活态），用 `include_bytes!` 编译进二进制
 - 暂停态：另一套灰色图标（同样三尺寸）
-- 图标放在 `packaging/icons/cmd2ctrl-{active,paused}-{16,22,32}.png`（6 张）
+- 图标放在 `packaging/icons/macctrl-{active,paused}-{16,22,32}.png`（6 张）
 - 生成方式：SVG 源 → `convert -resize` 生成 PNG，SVG 入库
 
 ### CLI 变更
