@@ -38,6 +38,6 @@ assets = [
     ["packaging/cmd2ctrl.service", "lib/systemd/user/cmd2ctrl.service", "644"],
     ["packaging/cmd2ctrl.desktop", "usr/share/applications/cmd2ctrl.desktop", "644"],
     ["packaging/99-uinput.rules", "lib/udev/rules.d/99-uinput.rules", "644"],
-    ["packaging/icons/cmd2ctrl-active.png", "usr/share/icons/cmd2ctrl.png", "644"],
+    ["packaging/icons/cmd2ctrl-active.png", "usr/share/icons/hicolor/32x32/apps/cmd2ctrl.png", "644"],
     ["config/config.toml", "etc/cmd2ctrl/config.toml", "644"],
 ]

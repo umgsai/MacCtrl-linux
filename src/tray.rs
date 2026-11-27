@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use gtk::gdk_pixbuf::Pixbuf;
+use gtk::gio;
+use gtk::glib;
 use gtk::prelude::*;
 use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 
@@ -8,35 +11,35 @@ use crate::binding::BindingTable;
 use crate::config::default_path;
 use crate::runner::{RunnerHandle, TrayCmd};
 
-const ICON_PATH: &str = "packaging/icons/cmd2ctrl-active.png";
+/// 托盘图标在编译期从 packaging/icons 嵌入，避免依赖运行目录或安装路径。
+const ICON_PNG: &[u8] = include_bytes!("../packaging/icons/cmd2ctrl-active.png");
 
-/// 从文件加载 SVG/PNG 为 tray_icon::Icon。失败返回 None。
-fn load_icon(path: &str) -> Option<tray_icon::Icon> {
-    let pixbuf = gtk::gdk_pixbuf::Pixbuf::from_file(path).ok()?;
+/// 解码内嵌 PNG 为 tray_icon::Icon。失败返回 None。
+fn load_icon() -> Option<tray_icon::Icon> {
+    let bytes = glib::Bytes::from_static(ICON_PNG);
+    let stream = gio::MemoryInputStream::from_bytes(&bytes);
+    let pixbuf = Pixbuf::from_stream(&stream, gio::Cancellable::NONE).ok()?;
+
     let width = pixbuf.width() as u32;
     let height = pixbuf.height() as u32;
-    // 确保是 RGBA 格式
-    let pixels = unsafe {
-        if pixbuf.has_alpha() {
-            pixbuf.pixels().to_vec()
-        } else {
-            // 无 alpha 通道，转为 RGBA
-            let mut rgba = Vec::with_capacity((width * height * 4) as usize);
-            let rowstride = pixbuf.rowstride() as usize;
-            let raw = pixbuf.pixels();
-            for y in 0..height as usize {
-                for x in 0..width as usize {
-                    let idx = y * rowstride + x * 3;
-                    rgba.push(raw[idx]);
-                    rgba.push(raw[idx + 1]);
-                    rgba.push(raw[idx + 2]);
-                    rgba.push(255);
-                }
+    let channels = pixbuf.n_channels() as usize;
+    let rowstride = pixbuf.rowstride() as usize;
+
+    // 统一转换成紧凑的 RGBA 布局（去掉可能存在的行填充）。
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    unsafe {
+        let raw = pixbuf.pixels();
+        for y in 0..height as usize {
+            for x in 0..width as usize {
+                let idx = y * rowstride + x * channels;
+                rgba.push(raw[idx]);
+                rgba.push(raw[idx + 1]);
+                rgba.push(raw[idx + 2]);
+                rgba.push(if channels == 4 { raw[idx + 3] } else { 255 });
             }
-            rgba
         }
-    };
-    tray_icon::Icon::from_rgba(pixels, width, height).ok()
+    }
+    tray_icon::Icon::from_rgba(rgba, width, height).ok()
 }
 
 /// 启动 GTK 事件循环（由主线程调用，阻塞直到 gtk::main_quit）。
@@ -44,7 +47,7 @@ pub fn run(handle: RunnerHandle, initial_table: BindingTable) -> anyhow::Result<
     gtk::init()?;
 
     // --- 托盘图标 ---
-    let icon = load_icon(ICON_PATH);
+    let icon = load_icon();
     let mut builder = tray_icon::TrayIconBuilder::new()
         .with_tooltip("cmd2ctrl")
         .with_title("cmd2ctrl");
