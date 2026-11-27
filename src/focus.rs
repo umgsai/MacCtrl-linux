@@ -92,9 +92,44 @@ impl FocusProbe {
     }
 
     fn classify(&self, win: Window, classes: &[String], titles: &[String]) -> Mode {
-        let cls = self.wm_class(win).ok().flatten();
-        let title = self.wm_name(win).ok().flatten();
-        mode_for_window(cls, title.as_deref(), classes, titles)
+        // 沿父链向上最多 16 层：WM_CLASS 和标题可能分散在子窗口/顶层窗口上。
+        // Java 应用（FinalShell）焦点常在 AWT 子窗口上，标题只存在于顶层。
+        let mut cur = win;
+        let mut found_class: Option<(String, String)> = None;
+        let mut first_title: Option<String> = None;
+        for _ in 0..16 {
+            if let Ok(Some((instance, class))) = self.wm_class_at(cur) {
+                if is_terminal_class(&instance, &class, classes) {
+                    return Mode::Terminal;
+                }
+                if found_class.is_none() {
+                    found_class = Some((instance, class));
+                }
+            }
+            if let Ok(Some(title)) = self.wm_name(cur) {
+                if is_terminal_title(&title, titles) {
+                    return Mode::Terminal;
+                }
+                if first_title.is_none() {
+                    first_title = Some(title);
+                }
+            }
+            let parent = match self.conn.query_tree(cur) {
+                Ok(cookie) => match cookie.reply() {
+                    Ok(tree) if tree.parent != 0 && tree.parent != self.root => tree.parent,
+                    _ => break,
+                },
+                Err(_) => break,
+            };
+            cur = parent;
+        }
+        let mode = if found_class.is_some() {
+            Mode::Gui
+        } else {
+            Mode::Terminal // fail-safe：无法确定窗口类型时按终端处理
+        };
+        log::debug!("焦点判定: class={found_class:?} title={first_title:?} -> {mode:?}");
+        mode
     }
 
     fn active_window(&self) -> Result<Option<Window>> {
@@ -114,24 +149,13 @@ impl FocusProbe {
         }
     }
 
-    /// 自活动窗口向上最多爬 16 层，找到第一个带 WM_CLASS 的窗口。
-    fn wm_class(&self, win: Window) -> Result<Option<(String, String)>> {
-        let mut cur = win;
-        for _ in 0..16 {
-            let reply = self
-                .conn
-                .get_property(false, cur, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 1024)?
-                .reply()?;
-            if let Some(pair) = parse_wm_class(&reply.value) {
-                return Ok(Some(pair));
-            }
-            let tree = self.conn.query_tree(cur)?.reply()?;
-            if tree.parent == 0 || tree.parent == self.root {
-                break;
-            }
-            cur = tree.parent;
-        }
-        Ok(None)
+    /// 读取单个窗口的 WM_CLASS（不向上爬）。
+    fn wm_class_at(&self, win: Window) -> Result<Option<(String, String)>> {
+        let reply = self
+            .conn
+            .get_property(false, win, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 1024)?
+            .reply()?;
+        Ok(parse_wm_class(&reply.value))
     }
 
     /// 读取窗口标题：优先 `_NET_WM_NAME`（UTF-8），回退 `WM_NAME`。

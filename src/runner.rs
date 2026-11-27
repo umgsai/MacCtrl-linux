@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use evdev::{AttributeSet, Device, EventType, KeyCode};
-use log::{info, warn};
+use log::{debug, info, warn};
 
 use crate::binding::{BindingTable, Mode};
 use crate::config::Config;
@@ -301,13 +301,18 @@ fn spawn_device(
                 let outs = if paused.load(Ordering::Relaxed) {
                     vec![crate::state::Out::Pass(ev)]
                 } else {
+                    let mode = probe
+                        .as_ref()
+                        .map(|p| p.mode(&classes, &titles))
+                        .unwrap_or(Mode::Terminal);
                     let table_ref = table.read().unwrap();
-                    machine.step(ev, &table_ref, || {
-                        probe
-                            .as_ref()
-                            .map(|p| p.mode(&classes, &titles))
-                            .unwrap_or(Mode::Terminal)
-                    })
+                    let outs = machine.step(ev, &table_ref, || mode);
+                    for out in &outs {
+                        if let crate::state::Out::Inject { id, chord, .. } = out {
+                            debug!("{name}: 命中 {id} -> {} (mode={mode:?})", chord.label());
+                        }
+                    }
+                    outs
                 };
                 let mut s = match sink.lock() {
                     Ok(s) => s,
