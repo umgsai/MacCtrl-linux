@@ -2,6 +2,7 @@ mod binding;
 mod config;
 mod device;
 mod focus;
+mod inject;
 mod key;
 mod state;
 
