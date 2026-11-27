@@ -60,7 +60,6 @@ impl Sink {
 pub fn events_for(out: &Out) -> Vec<(u16, u16, i32)> {
     match out {
         Out::Pass(Ev::Key { code, value }) => vec![(EventType::KEY.0, *code, *value)],
-        Out::Pass(Ev::Raw { type_, code, value }) => vec![(*type_, *code, *value)],
         Out::Inject {
             chord, skip_shift, ..
         } => chord
@@ -88,16 +87,6 @@ mod tests {
             events_for(&out),
             vec![(EventType::KEY.0, KeyCode::KEY_A.0, 1)]
         );
-    }
-
-    #[test]
-    fn raw_pass_event_keeps_type() {
-        let out = Out::Pass(Ev::Raw {
-            type_: 4,
-            code: 4,
-            value: 30,
-        });
-        assert_eq!(events_for(&out), vec![(4, 4, 30)]);
     }
 
     #[test]

@@ -3,11 +3,10 @@ use evdev::KeyCode;
 use crate::binding::{BindingTable, Mode};
 use crate::key::{Chord, KeyPattern};
 
-/// 输入事件：按键事件或原始事件（如 EV_MSC 扫描码）。
+/// 输入事件：按键事件。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ev {
     Key { code: u16, value: i32 },
-    Raw { type_: u16, code: u16, value: i32 },
 }
 
 /// 状态机的输出：原样放行事件，或注入目标按键序列。
@@ -73,11 +72,7 @@ impl Machine {
 
     /// 处理单个事件，返回需要发往下游的事件序列。
     pub fn step<F: FnOnce() -> Mode>(&mut self, ev: Ev, table: &BindingTable, mode: F) -> Vec<Out> {
-        let (code, value) = match ev {
-            Ev::Key { code, value } => (code, value),
-            // 原始事件（如 MSC 扫描码）不参与状态判断，直接放行。
-            Ev::Raw { .. } => return vec![Out::Pass(ev)],
-        };
+        let Ev::Key { code, value } = ev;
 
         // 修饰键单独处理，以便缓冲或放行。
         if code == SUPER_L || code == SUPER_R {
@@ -376,22 +371,6 @@ mod tests {
         assert_eq!(
             m.step(k(KeyCode::KEY_A, 1), &t, || Mode::Gui),
             vec![Out::Pass(k(KeyCode::KEY_A, 1))]
-        );
-        assert_eq!(
-            m.step(
-                Ev::Raw {
-                    type_: 4,
-                    code: 4,
-                    value: 30
-                },
-                &t,
-                || Mode::Gui
-            ),
-            vec![Out::Pass(Ev::Raw {
-                type_: 4,
-                code: 4,
-                value: 30
-            })]
         );
     }
 

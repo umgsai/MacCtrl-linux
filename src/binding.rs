@@ -195,17 +195,6 @@ impl BindingTable {
         Some((b.id.clone(), chord))
     }
 
-    /// 切换指定 id 的启用状态。
-    pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Result<()> {
-        let b = self
-            .bindings
-            .iter_mut()
-            .find(|b| b.id == id)
-            .ok_or_else(|| anyhow::anyhow!("未知绑定 id: {id}"))?;
-        b.enabled = enabled;
-        Ok(())
-    }
-
     pub fn all(&self) -> &[Binding] {
         &self.bindings
     }
@@ -237,8 +226,8 @@ pub fn list_bindings_text(bindings: &[Binding]) -> String {
     let mut out = String::new();
     writeln!(
         out,
-        "{:<14} {:<18} {:<20} {:<20} {:<8} {}",
-        "ID", "物理组合", "GUI", "终端", "启用", "来源"
+        "{:<14} {:<18} {:<20} {:<20} {:<8} 来源",
+        "ID", "物理组合", "GUI", "终端", "启用"
     )
     .unwrap();
     for b in bindings {
@@ -399,18 +388,6 @@ mod tests {
         let err = BindingTable::new(list).unwrap_err().to_string();
         assert!(err.contains("cmd-c-dup"), "{err}");
         assert!(err.contains("cmd-c"), "{err}");
-    }
-
-    #[test]
-    fn set_enabled_toggles_lookup() {
-        let mut t = BindingTable::new(builtin_bindings()).unwrap();
-        t.set_enabled("cmd-d", true).unwrap();
-        assert_eq!(
-            t.resolve(KeyPattern::parse("d").unwrap(), Mode::Gui),
-            Some(("cmd-d".to_string(), Chord::parse("ctrl+d").unwrap()))
-        );
-        t.set_enabled("cmd-c", false).unwrap();
-        assert_eq!(t.resolve(KeyPattern::parse("c").unwrap(), Mode::Gui), None);
     }
 
     #[test]
