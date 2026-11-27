@@ -1,5 +1,6 @@
 mod binding;
 mod config;
+mod device;
 mod key;
 mod state;
 
