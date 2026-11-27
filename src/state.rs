@@ -40,6 +40,10 @@ pub struct Machine {
     shift_buffered: bool,
     /// Shift 已在 Super 之前或之前放行过，注入时需跳过 Shift。
     shift_forwarded: bool,
+    /// 本次待定/回放使用的 Super 键码（区分左右）。
+    super_code: u16,
+    /// 本次待定/回放使用的 Shift 键码（区分左右）。
+    shift_code: u16,
 }
 
 const SUPER_L: u16 = KeyCode::KEY_LEFTMETA.0;
@@ -67,6 +71,8 @@ impl Machine {
             state: State::Idle,
             shift_buffered: false,
             shift_forwarded: false,
+            super_code: SUPER_L,
+            shift_code: SHIFT_L,
         }
     }
 
@@ -76,10 +82,10 @@ impl Machine {
 
         // 修饰键单独处理，以便缓冲或放行。
         if code == SUPER_L || code == SUPER_R {
-            return self.on_super(value, ev);
+            return self.on_super(code, value, ev);
         }
         if code == SHIFT_L || code == SHIFT_R {
-            return self.on_shift(value, ev);
+            return self.on_shift(code, value, ev);
         }
         if code == CTRL_L || code == CTRL_R || code == ALT_L || code == ALT_R {
             return self.on_ctrl_alt(value, ev);
@@ -134,9 +140,9 @@ impl Machine {
 
     /// 未命中绑定：先补发 Super，再放行当前按键。
     fn flush_pending(&mut self, code: u16, value: i32) -> Vec<Out> {
-        let mut out = vec![Out::Pass(ev_key(SUPER_L, 1))];
+        let mut out = vec![Out::Pass(ev_key(self.super_code, 1))];
         if self.shift_buffered {
-            out.push(Out::Pass(ev_key(SHIFT_L, 1)));
+            out.push(Out::Pass(ev_key(self.shift_code, 1)));
             self.shift_forwarded = true;
             self.shift_buffered = false;
         }
@@ -145,10 +151,11 @@ impl Machine {
         out
     }
 
-    fn on_super(&mut self, value: i32, ev: Ev) -> Vec<Out> {
+    fn on_super(&mut self, code: u16, value: i32, ev: Ev) -> Vec<Out> {
         match (self.state, value) {
-            // 空闲时按下 Super：进入待定，暂不转发。
+            // 空闲时按下 Super：进入待定，暂不转发，并记录左右键码。
             (State::Idle, 1) => {
+                self.super_code = code;
                 self.state = State::Pending;
                 vec![]
             }
@@ -158,10 +165,10 @@ impl Machine {
             (State::Pending, 0) => {
                 let mut out = Vec::new();
                 if self.shift_buffered {
-                    out.push(Out::Pass(ev_key(SHIFT_L, 1)));
+                    out.push(Out::Pass(ev_key(self.shift_code, 1)));
                 }
-                out.push(Out::Pass(ev_key(SUPER_L, 1)));
-                out.push(Out::Pass(ev_key(SUPER_L, 0)));
+                out.push(Out::Pass(ev_key(self.super_code, 1)));
+                out.push(Out::Pass(ev_key(self.super_code, 0)));
                 if self.shift_buffered {
                     self.shift_buffered = false;
                     self.shift_forwarded = true;
@@ -170,9 +177,16 @@ impl Machine {
                 out
             }
             // 组合键注入后松开 Super：不转发，回到空闲。
+            // 若仍有缓冲的 Shift，先补发其按下，避免残留状态导致后续误判。
             (State::Consumed(_), 0) => {
+                let mut out = Vec::new();
+                if self.shift_buffered {
+                    out.push(Out::Pass(ev_key(self.shift_code, 1)));
+                    self.shift_buffered = false;
+                    self.shift_forwarded = true;
+                }
                 self.state = State::Idle;
-                vec![]
+                out
             }
             (_, 0) => {
                 self.state = State::Idle;
@@ -182,20 +196,21 @@ impl Machine {
         }
     }
 
-    fn on_shift(&mut self, value: i32, ev: Ev) -> Vec<Out> {
+    fn on_shift(&mut self, code: u16, value: i32, ev: Ev) -> Vec<Out> {
         match (self.state, value) {
             // Super 待定期间按下 Shift：先缓冲，等待是否构成 shift 组合。
             (State::Pending, 1) => {
+                self.shift_code = code;
                 self.shift_buffered = true;
                 vec![]
             }
             (State::Pending, 2) => vec![],
             // 待定期间松开 Shift：Super 不构成组合键，补发 Super 与 Shift。
             (State::Pending, 0) => {
-                let mut out = vec![Out::Pass(ev_key(SUPER_L, 1))];
+                let mut out = vec![Out::Pass(ev_key(self.super_code, 1))];
                 if self.shift_buffered {
-                    out.push(Out::Pass(ev_key(SHIFT_L, 1)));
-                    out.push(Out::Pass(ev_key(SHIFT_L, 0)));
+                    out.push(Out::Pass(ev_key(self.shift_code, 1)));
+                    out.push(Out::Pass(ev_key(self.shift_code, 0)));
                     self.shift_buffered = false;
                     self.shift_forwarded = false;
                 } else {
@@ -220,6 +235,7 @@ impl Machine {
                 vec![Out::Pass(ev)]
             }
             (_, 1) => {
+                self.shift_code = code;
                 self.shift_forwarded = true;
                 vec![Out::Pass(ev)]
             }
@@ -230,9 +246,9 @@ impl Machine {
     fn on_ctrl_alt(&mut self, value: i32, ev: Ev) -> Vec<Out> {
         // Super 待定期间按下 Ctrl/Alt：不是可转换的组合，放行 Super 后原样转发。
         if value == 1 && self.state == State::Pending {
-            let mut out = vec![Out::Pass(ev_key(SUPER_L, 1))];
+            let mut out = vec![Out::Pass(ev_key(self.super_code, 1))];
             if self.shift_buffered {
-                out.push(Out::Pass(ev_key(SHIFT_L, 1)));
+                out.push(Out::Pass(ev_key(self.shift_code, 1)));
                 self.shift_forwarded = true;
                 self.shift_buffered = false;
             }
@@ -463,5 +479,38 @@ mod tests {
         assert_eq!(id, "cmd-c");
         assert_eq!(chord, &Chord::parse("ctrl+c").unwrap());
         assert!(m.step(k(KeyCode::KEY_C, 0), &t, || Mode::Gui).is_empty());
+    }
+
+    #[test]
+    fn right_super_replays_right_super() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_RIGHTMETA, 1), &t, || Mode::Gui);
+        let outs = m.step(k(KeyCode::KEY_E, 1), &t, || Mode::Gui);
+        assert_eq!(outs[0], Out::Pass(k(KeyCode::KEY_RIGHTMETA, 1)));
+        assert_eq!(outs[1], Out::Pass(k(KeyCode::KEY_E, 1)));
+        let outs = m.step(k(KeyCode::KEY_RIGHTMETA, 0), &t, || Mode::Gui);
+        assert_eq!(outs, vec![Out::Pass(k(KeyCode::KEY_RIGHTMETA, 0))]);
+    }
+
+    #[test]
+    fn consumed_super_release_flushes_buffered_shift() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
+        let outs = m.step(k(KeyCode::KEY_LEFTMETA, 0), &t, || Mode::Gui);
+        assert_eq!(outs, vec![Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 1))]);
+        assert_eq!(
+            m.step(k(KeyCode::KEY_LEFTSHIFT, 0), &t, || Mode::Gui),
+            vec![Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 0))]
+        );
+        // 不应残留 shift 状态：再次 Cmd+C 仍命中 cmd-c
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        let outs = m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
+        let (id, chord, _) = last_inject(&outs);
+        assert_eq!(id, "cmd-c");
+        assert_eq!(chord, &Chord::parse("ctrl+c").unwrap());
     }
 }

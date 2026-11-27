@@ -22,6 +22,15 @@ pub fn is_terminal_class(instance: &str, class: &str, whitelist: &[String]) -> b
     whitelist.iter().any(|w| *w == i || *w == c)
 }
 
+/// 根据 WM_CLASS 归类窗口；无法确定窗口类型时按终端处理（fail-safe）。
+pub fn mode_for_wm_class(cls: Option<(String, String)>, classes: &[String]) -> Mode {
+    match cls {
+        Some((instance, class)) if is_terminal_class(&instance, &class, classes) => Mode::Terminal,
+        Some(_) => Mode::Gui,
+        None => Mode::Terminal, // fail-safe：无法确定窗口类型时按终端处理
+    }
+}
+
 /// X11 焦点探针：查询当前活动窗口并归类为 GUI 或终端。
 pub struct FocusProbe {
     conn: x11rb::rust_connection::RustConnection,
@@ -47,19 +56,11 @@ impl FocusProbe {
     /// 任何查询异常都回退到终端模式：误发 Ctrl+Shift+C 无害，误发 Ctrl+C 会杀进程。
     pub fn mode(&self, classes: &[String]) -> Mode {
         match self.active_window() {
-            Ok(Some(win)) => match self.wm_class(win) {
-                Ok(Some((instance, class))) => {
-                    if is_terminal_class(&instance, &class, classes) {
-                        Mode::Terminal
-                    } else {
-                        Mode::Gui
-                    }
-                }
-                Ok(None) => Mode::Gui,
-                Err(_) => Mode::Terminal,
+            Ok(Some(win)) => mode_for_wm_class(self.wm_class(win).ok().flatten(), classes),
+            _ => match self.input_focus() {
+                Ok(Some(win)) => mode_for_wm_class(self.wm_class(win).ok().flatten(), classes),
+                _ => Mode::Terminal,
             },
-            Ok(None) => Mode::Gui,
-            Err(_) => Mode::Terminal,
         }
     }
 
@@ -69,6 +70,15 @@ impl FocusProbe {
             .get_property(false, self.root, AtomEnum::WINDOW, self.active_atom, 0, 1)?
             .reply()?;
         Ok(reply.value32().and_then(|mut it| it.next()))
+    }
+
+    fn input_focus(&self) -> Result<Option<Window>> {
+        let reply = self.conn.get_input_focus()?.reply()?;
+        // 0 = None, 1 = PointerRoot：没有具体焦点窗口
+        match reply.focus {
+            0 | 1 => Ok(None),
+            w => Ok(Some(w)),
+        }
     }
 
     /// 自活动窗口向上最多爬 16 层，找到第一个带 WM_CLASS 的窗口。
@@ -122,5 +132,19 @@ mod tests {
             &wl
         ));
         assert!(!is_terminal_class("code", "Code", &wl));
+    }
+
+    #[test]
+    fn missing_wm_class_fails_safe_to_terminal() {
+        let wl = classes(&["kitty"]);
+        assert_eq!(mode_for_wm_class(None, &wl), Mode::Terminal);
+        assert_eq!(
+            mode_for_wm_class(Some(("kitty".to_string(), "kitty".to_string())), &wl),
+            Mode::Terminal
+        );
+        assert_eq!(
+            mode_for_wm_class(Some(("code".to_string(), "Code".to_string())), &wl),
+            Mode::Gui
+        );
     }
 }

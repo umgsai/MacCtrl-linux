@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -45,33 +46,44 @@ pub fn run_loop(table: BindingTable, config: Config, dry_run: bool) -> Result<()
         Arc::new(Mutex::new(Sink::real(&keys)?))
     };
 
+    let stop = Arc::new(AtomicBool::new(false));
     let mut running: HashMap<PathBuf, thread::JoinHandle<()>> = HashMap::new();
     for (path, dev) in keyboards {
-        spawn_device(
-            path,
-            dev,
-            table.clone(),
-            classes.clone(),
-            sink.clone(),
-            !dry_run,
-            &mut running,
+        running.insert(
+            path.clone(),
+            spawn_device(
+                path,
+                dev,
+                table.clone(),
+                classes.clone(),
+                sink.clone(),
+                stop.clone(),
+                !dry_run,
+            ),
         );
     }
 
     // 主线程只负责热插拔重扫；设备各自的读取线程独立运行。
     loop {
         thread::sleep(Duration::from_secs(2));
+        if stop.load(Ordering::SeqCst) {
+            warn!("检测到致命错误，进程退出以释放所有键盘抓取");
+            return Ok(());
+        }
         running.retain(|_, h| !h.is_finished());
         for (path, dev) in collect_keyboards(&include, &exclude) {
             if !running.contains_key(&path) {
-                spawn_device(
-                    path,
-                    dev,
-                    table.clone(),
-                    classes.clone(),
-                    sink.clone(),
-                    !dry_run,
-                    &mut running,
+                running.insert(
+                    path.clone(),
+                    spawn_device(
+                        path,
+                        dev,
+                        table.clone(),
+                        classes.clone(),
+                        sink.clone(),
+                        stop.clone(),
+                        !dry_run,
+                    ),
                 );
             }
         }
@@ -99,12 +111,12 @@ fn spawn_device(
     table: Arc<BindingTable>,
     classes: Arc<Vec<String>>,
     sink: Arc<Mutex<Sink>>,
+    stop: Arc<AtomicBool>,
     grab: bool,
-    running: &mut HashMap<PathBuf, thread::JoinHandle<()>>,
-) {
+) -> thread::JoinHandle<()> {
     let name = dev.name().unwrap_or("<unknown>").to_string();
     let shown_path = path.display().to_string();
-    let handle = thread::spawn(move || {
+    thread::spawn(move || {
         if grab {
             if let Err(e) = dev.grab() {
                 warn!("抓取 {name} ({shown_path}) 失败: {e}");
@@ -140,16 +152,20 @@ fn spawn_device(
                 });
                 let mut s = match sink.lock() {
                     Ok(s) => s,
-                    Err(_) => return,
+                    Err(_) => {
+                        stop.store(true, Ordering::SeqCst);
+                        warn!("注入锁中毒，退出以释放键盘");
+                        return;
+                    }
                 };
                 for out in &outs {
                     if let Err(e) = s.emit(out) {
-                        warn!("注入失败，退出以恢复键盘: {e}");
+                        stop.store(true, Ordering::SeqCst);
+                        warn!("注入失败，退出以释放键盘: {e}");
                         return;
                     }
                 }
             }
         }
-    });
-    running.insert(path, handle);
+    })
 }
