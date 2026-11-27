@@ -1,3 +1,4 @@
+mod binding;
 mod key;
 
 fn main() {
