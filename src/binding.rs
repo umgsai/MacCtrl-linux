@@ -160,7 +160,7 @@ pub fn builtin_bindings() -> Vec<Binding> {
 }
 
 /// 绑定表：持有全部绑定，并提供按物理组合查找与启停控制。
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BindingTable {
     bindings: Vec<Binding>,
 }

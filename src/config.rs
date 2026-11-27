@@ -28,7 +28,7 @@ pub const DEFAULT_TERMINAL_CLASSES: &[&str] = &[
     "sakura",
 ];
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub device: DeviceConfig,
@@ -38,7 +38,7 @@ pub struct Config {
     pub bindings: BTreeMap<String, BindingOverride>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct DeviceConfig {
     #[serde(default)]
     pub include_patterns: Vec<String>,
@@ -46,14 +46,14 @@ pub struct DeviceConfig {
     pub exclude_patterns: Vec<String>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct X11Config {
     #[serde(default)]
     pub terminal_classes: Vec<String>,
 }
 
 /// 针对单条绑定的配置覆盖项。
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct BindingOverride {
     pub enabled: Option<bool>,
     pub gui: Option<String>,

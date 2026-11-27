@@ -6,11 +6,13 @@ mod inject;
 mod key;
 mod runner;
 mod state;
+mod tray;
 
 use std::path::PathBuf;
 
 use anyhow::{bail, Result};
 use clap::Parser;
+use log::info;
 
 use crate::binding::{builtin_bindings, list_bindings_text, BindingTable};
 use crate::config::Config;
@@ -43,6 +45,9 @@ pub struct Args {
     /// 输出调试日志
     #[arg(long)]
     pub verbose: bool,
+    /// 禁用托盘图标（headless 环境或不想显示）
+    #[arg(long)]
+    pub no_tray: bool,
 }
 
 fn main() -> Result<()> {
@@ -91,7 +96,27 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    runner::run_loop(table, cfg, args.dry_run)
+    let have_display = std::env::var("DISPLAY").is_ok();
+    let want_tray = !args.no_tray && have_display;
+
+    if want_tray {
+        info!("以托盘模式启动");
+        let cfg_clone = cfg.clone();
+        let config_path = args.config.clone();
+        let (join, handle) = runner::spawn(table.clone(), cfg_clone, args.dry_run, config_path);
+        tray::run(handle, table)?;
+        info!("等待 runner 退出…");
+        let _ = join.join();
+    } else {
+        if !have_display && !args.no_tray {
+            info!("tray disabled: no DISPLAY");
+        } else if args.no_tray {
+            info!("tray disabled by --no-tray");
+        }
+        let _ = runner::run_loop(table, cfg, args.dry_run);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
