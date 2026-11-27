@@ -102,6 +102,21 @@ impl Machine {
                 // 被转换的组合键：其释放与自动重复一并吞掉，避免泄漏到下游。
                 if code == mapped && (value == 0 || value == 2) {
                     vec![]
+                } else if code == mapped && value == 1 {
+                    // Super 仍按住时再次按下同一键：重新解析并注入，
+                    // 否则会输出一次缺少 Super 的普通按键，且其释放被吞掉造成卡键。
+                    let pattern = KeyPattern {
+                        shift: self.shift_buffered || self.shift_forwarded,
+                        code: KeyCode::new(code),
+                    };
+                    match table.resolve(pattern, mode()) {
+                        Some((id, chord)) => vec![Out::Inject {
+                            id,
+                            chord,
+                            skip_shift: self.shift_forwarded,
+                        }],
+                        None => vec![Out::Pass(ev)],
+                    }
                 } else {
                     vec![Out::Pass(ev)]
                 }
@@ -413,5 +428,19 @@ mod tests {
                 Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 0)),
             ]
         );
+    }
+
+    #[test]
+    fn repeat_press_of_same_key_while_super_held_reinjects() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
+        assert!(m.step(k(KeyCode::KEY_C, 0), &t, || Mode::Gui).is_empty());
+        let outs = m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
+        let (id, chord, _) = last_inject(&outs);
+        assert_eq!(id, "cmd-c");
+        assert_eq!(chord, &Chord::parse("ctrl+c").unwrap());
+        assert!(m.step(k(KeyCode::KEY_C, 0), &t, || Mode::Gui).is_empty());
     }
 }
