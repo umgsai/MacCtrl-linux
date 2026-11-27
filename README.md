@@ -1,4 +1,4 @@
-# macctrl
+# MacCtrl
 
 把外接 Mac 键盘上的 **Command** 键组合映射为 **Ctrl** 组合，专为 Linux（X11）桌面设计。
 
@@ -153,7 +153,7 @@ packaging/
   macctrl.service      # systemd 用户级服务
   macctrl.desktop      # 桌面自启
   99-uinput.rules       # udev 权限规则
-  icons/macctrl-active.png
+  icons/macctrl.png
 
 config/
   config.toml           # 示例配置

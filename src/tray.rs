@@ -49,8 +49,8 @@ pub fn run(handle: RunnerHandle, initial_table: BindingTable) -> anyhow::Result<
     // --- 托盘图标 ---
     let icon = load_icon();
     let mut builder = tray_icon::TrayIconBuilder::new()
-        .with_tooltip("macctrl")
-        .with_title("macctrl");
+        .with_tooltip("MacCtrl")
+        .with_title("MacCtrl");
     if let Some(ic) = &icon {
         builder = builder.with_icon(ic.clone());
     }
@@ -62,7 +62,7 @@ pub fn run(handle: RunnerHandle, initial_table: BindingTable) -> anyhow::Result<
     let total_count = initial_table.all().len();
     let header = MenuItem::new(
         format!(
-            "macctrl — 运行中 · 0 键盘 · {}/{} 绑定",
+            "MacCtrl — 运行中 · 0 键盘 · {}/{} 绑定",
             enabled_count, total_count
         ),
         false, // disabled (header-only)
@@ -127,7 +127,7 @@ pub fn run(handle: RunnerHandle, initial_table: BindingTable) -> anyhow::Result<
                     gtk::ButtonsType::Ok,
                     list_text.as_str(),
                 );
-                dialog.set_title("macctrl - 绑定列表");
+                dialog.set_title("MacCtrl - 绑定列表");
                 dialog.set_default_width(800);
                 dialog.set_default_height(600);
                 dialog.connect_response(|d, _| d.close());
@@ -154,7 +154,7 @@ pub fn run(handle: RunnerHandle, initial_table: BindingTable) -> anyhow::Result<
             let status = if st.paused { "已暂停" } else { "运行中" };
             let dry_suffix = if st.dry_run { " (dry-run)" } else { "" };
             header_for_refresh.set_text(format!(
-                "macctrl — {status}{dry_suffix} · {} 键盘 · {}/{} 绑定",
+                "MacCtrl — {status}{dry_suffix} · {} 键盘 · {}/{} 绑定",
                 st.active_keyboards, st.enabled_bindings, st.total_bindings,
             ));
             pause_for_refresh.set_text(if st.paused { "继续" } else { "暂停" });

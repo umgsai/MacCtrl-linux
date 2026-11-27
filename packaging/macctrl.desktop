@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=macctrl
+Name=MacCtrl
 Comment=Map Mac Command key to Ctrl (terminal-aware)
 Exec=systemctl --user start macctrl
 Icon=macctrl

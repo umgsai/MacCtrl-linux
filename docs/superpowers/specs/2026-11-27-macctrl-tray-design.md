@@ -1,4 +1,4 @@
-# macctrl 托盘图标设计
+# MacCtrl 托盘图标设计
 
 **状态:** 已批准  
 **日期:** 2026-11-27  
@@ -6,7 +6,7 @@
 
 ## 目标
 
-macctrl 作为后台常驻进程运行时，在系统托盘（StatusNotifier）显示图标和菜单，提供运行时控制入口。
+MacCtrl 作为后台常驻进程运行时，在系统托盘（StatusNotifier）显示图标和菜单，提供运行时控制入口。
 
 ## 非目标（YAGNI）
 
@@ -145,7 +145,7 @@ runner 原来持有 `Arc<BindingTable>` 常量引用。Reload 需要替换为新
 
 | 序号 | 菜单项 | 类型 | 行为 |
 |---|---|---|---|
-| 1 | `macctrl v0.1.0 — 运行中 · 3 键盘 · 42/60 绑定` | 标题（不可选） | tooltip 副标题，托盘每 2 秒刷新 |
+| 1 | `MacCtrl v0.1.0 — 运行中 · 3 键盘 · 42/60 绑定` | 标题（不可选） | tooltip 副标题，托盘每 2 秒刷新 |
 | 2 | `□ 暂停/继续` | CheckboxMenuItem | TogglePause |
 | 3 | `重载配置` | MenuItem | ReloadConfig |
 | 4 | `列出绑定…` | MenuItem | 托盘线程弹 gtk::MessageDialog（用 list_bindings_text） |
