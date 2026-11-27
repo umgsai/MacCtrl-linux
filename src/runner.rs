@@ -47,7 +47,15 @@ pub fn run_loop(table: BindingTable, config: Config, dry_run: bool) -> Result<()
 
     let mut running: HashMap<PathBuf, thread::JoinHandle<()>> = HashMap::new();
     for (path, dev) in keyboards {
-        spawn_device(path, dev, table.clone(), classes.clone(), sink.clone(), !dry_run, &mut running);
+        spawn_device(
+            path,
+            dev,
+            table.clone(),
+            classes.clone(),
+            sink.clone(),
+            !dry_run,
+            &mut running,
+        );
     }
 
     // 主线程只负责热插拔重扫；设备各自的读取线程独立运行。
@@ -56,7 +64,15 @@ pub fn run_loop(table: BindingTable, config: Config, dry_run: bool) -> Result<()
         running.retain(|_, h| !h.is_finished());
         for (path, dev) in collect_keyboards(&include, &exclude) {
             if !running.contains_key(&path) {
-                spawn_device(path, dev, table.clone(), classes.clone(), sink.clone(), !dry_run, &mut running);
+                spawn_device(
+                    path,
+                    dev,
+                    table.clone(),
+                    classes.clone(),
+                    sink.clone(),
+                    !dry_run,
+                    &mut running,
+                );
             }
         }
     }
@@ -69,7 +85,11 @@ fn collect_keyboards(include: &[String], exclude: &[String]) -> Vec<(PathBuf, De
                 .map(|n| device::matches_filters(n, include, exclude) && !n.contains("cmd2ctrl"))
                 .unwrap_or(false)
         })
-        .filter(|(_, dev)| dev.supported_keys().map(device::is_keyboard).unwrap_or(false))
+        .filter(|(_, dev)| {
+            dev.supported_keys()
+                .map(device::is_keyboard)
+                .unwrap_or(false)
+        })
         .collect()
 }
 
@@ -108,9 +128,15 @@ fn spawn_device(
                 if raw.event_type() != EventType::KEY {
                     continue;
                 }
-                let ev = Ev::Key { code: raw.code(), value: raw.value() };
+                let ev = Ev::Key {
+                    code: raw.code(),
+                    value: raw.value(),
+                };
                 let outs = machine.step(ev, &table, || {
-                    probe.as_ref().map(|p| p.mode(&classes)).unwrap_or(Mode::Terminal)
+                    probe
+                        .as_ref()
+                        .map(|p| p.mode(&classes))
+                        .unwrap_or(Mode::Terminal)
                 });
                 let mut s = match sink.lock() {
                     Ok(s) => s,

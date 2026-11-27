@@ -28,8 +28,16 @@ impl Sink {
     /// 将状态机输出写入下游；dry-run 下仅打印命中信息。
     pub fn emit(&mut self, out: &Out) -> Result<()> {
         if let Sink::Dry = self {
-            if let Out::Inject { id, chord, skip_shift } = out {
-                println!("[dry-run] 命中 {id} -> {} (skip_shift={skip_shift})", chord.label());
+            if let Out::Inject {
+                id,
+                chord,
+                skip_shift,
+            } = out
+            {
+                println!(
+                    "[dry-run] 命中 {id} -> {} (skip_shift={skip_shift})",
+                    chord.label()
+                );
             }
             return Ok(());
         }
@@ -53,7 +61,9 @@ pub fn events_for(out: &Out) -> Vec<(u16, u16, i32)> {
     match out {
         Out::Pass(Ev::Key { code, value }) => vec![(EventType::KEY.0, *code, *value)],
         Out::Pass(Ev::Raw { type_, code, value }) => vec![(*type_, *code, *value)],
-        Out::Inject { chord, skip_shift, .. } => chord
+        Out::Inject {
+            chord, skip_shift, ..
+        } => chord
             .events(*skip_shift)
             .into_iter()
             .map(|(c, v)| (EventType::KEY.0, c, v))
@@ -70,13 +80,23 @@ mod tests {
 
     #[test]
     fn key_pass_event() {
-        let out = Out::Pass(Ev::Key { code: KeyCode::KEY_A.0, value: 1 });
-        assert_eq!(events_for(&out), vec![(EventType::KEY.0, KeyCode::KEY_A.0, 1)]);
+        let out = Out::Pass(Ev::Key {
+            code: KeyCode::KEY_A.0,
+            value: 1,
+        });
+        assert_eq!(
+            events_for(&out),
+            vec![(EventType::KEY.0, KeyCode::KEY_A.0, 1)]
+        );
     }
 
     #[test]
     fn raw_pass_event_keeps_type() {
-        let out = Out::Pass(Ev::Raw { type_: 4, code: 4, value: 30 });
+        let out = Out::Pass(Ev::Raw {
+            type_: 4,
+            code: 4,
+            value: 30,
+        });
         assert_eq!(events_for(&out), vec![(4, 4, 30)]);
     }
 

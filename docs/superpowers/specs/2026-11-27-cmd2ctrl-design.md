@@ -107,6 +107,7 @@
 | SuperPending | 非按键事件（EV_MSC / EV_SYN / LED 等） | 原样转发 | SuperPending |
 | SuperForwarded | 任意事件（含 Super 松开） | 原样转发 | Super 松开后 Idle |
 | Consumed | 被映射键松开 / 重复键 | 无 | Consumed |
+| Consumed | 被映射键再次按下（Super 仍按住） | 重新注入目标 chord（避免"只按下不松开"卡键） | Consumed |
 | Consumed | 暂存 Shift 松开 | 无 | Consumed |
 | Consumed | 其他普通键按下/松开 | 原样转发（此时 Super 未被按下） | Consumed |
 | Consumed | Super 松开 | 无 | Idle |

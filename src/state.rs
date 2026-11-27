@@ -14,7 +14,11 @@ pub enum Ev {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Out {
     Pass(Ev),
-    Inject { id: String, chord: Chord, skip_shift: bool },
+    Inject {
+        id: String,
+        chord: Chord,
+        skip_shift: bool,
+    },
 }
 
 /// 延迟 Super 状态机的内部状态。
@@ -60,7 +64,11 @@ impl Default for Machine {
 
 impl Machine {
     pub fn new() -> Self {
-        Self { state: State::Idle, shift_buffered: false, shift_forwarded: false }
+        Self {
+            state: State::Idle,
+            shift_buffered: false,
+            shift_forwarded: false,
+        }
     }
 
     /// 处理单个事件，返回需要发往下游的事件序列。
@@ -93,7 +101,11 @@ impl Machine {
                         // 命中绑定：注入目标 chord，并记录被吞下的按键。
                         let skip_shift = self.shift_forwarded;
                         self.state = State::Consumed(code);
-                        return vec![Out::Inject { id, chord, skip_shift }];
+                        return vec![Out::Inject {
+                            id,
+                            chord,
+                            skip_shift,
+                        }];
                     }
                 }
                 self.flush_pending(code, value)
@@ -262,12 +274,19 @@ mod tests {
     }
 
     fn k(code: KeyCode, value: i32) -> Ev {
-        Ev::Key { code: code.0, value }
+        Ev::Key {
+            code: code.0,
+            value,
+        }
     }
 
     fn last_inject(outs: &[Out]) -> (&str, &Chord, bool) {
         match outs.last().unwrap() {
-            Out::Inject { id, chord, skip_shift } => (id.as_str(), chord, *skip_shift),
+            Out::Inject {
+                id,
+                chord,
+                skip_shift,
+            } => (id.as_str(), chord, *skip_shift),
             other => panic!("期望 Inject，实际 {other:?}"),
         }
     }
@@ -276,7 +295,9 @@ mod tests {
     fn copy_in_gui() {
         let t = table();
         let mut m = Machine::new();
-        assert!(m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui).is_empty());
+        assert!(m
+            .step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui)
+            .is_empty());
         let outs = m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
         assert_eq!(outs.len(), 1);
         let (id, chord, skip) = last_inject(&outs);
@@ -357,8 +378,20 @@ mod tests {
             vec![Out::Pass(k(KeyCode::KEY_A, 1))]
         );
         assert_eq!(
-            m.step(Ev::Raw { type_: 4, code: 4, value: 30 }, &t, || Mode::Gui),
-            vec![Out::Pass(Ev::Raw { type_: 4, code: 4, value: 30 })]
+            m.step(
+                Ev::Raw {
+                    type_: 4,
+                    code: 4,
+                    value: 30
+                },
+                &t,
+                || Mode::Gui
+            ),
+            vec![Out::Pass(Ev::Raw {
+                type_: 4,
+                code: 4,
+                value: 30
+            })]
         );
     }
 
@@ -367,7 +400,9 @@ mod tests {
         let t = table();
         let mut m = Machine::new();
         m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
-        assert!(m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui).is_empty());
+        assert!(m
+            .step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui)
+            .is_empty());
         let outs = m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
         let (id, chord, skip) = last_inject(&outs);
         assert_eq!(id, "cmd-shift-z");
@@ -398,8 +433,13 @@ mod tests {
         m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
         assert!(m.step(k(KeyCode::KEY_C, 2), &t, || Mode::Gui).is_empty());
         assert!(m.step(k(KeyCode::KEY_C, 0), &t, || Mode::Gui).is_empty());
-        assert!(m.step(k(KeyCode::KEY_LEFTMETA, 0), &t, || Mode::Gui).is_empty());
-        assert_eq!(m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui)[0], Out::Pass(k(KeyCode::KEY_C, 1)));
+        assert!(m
+            .step(k(KeyCode::KEY_LEFTMETA, 0), &t, || Mode::Gui)
+            .is_empty());
+        assert_eq!(
+            m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui)[0],
+            Out::Pass(k(KeyCode::KEY_C, 1))
+        );
     }
 
     #[test]
@@ -410,7 +450,9 @@ mod tests {
         m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui);
         m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
         assert!(m.step(k(KeyCode::KEY_Z, 0), &t, || Mode::Gui).is_empty());
-        assert!(m.step(k(KeyCode::KEY_LEFTSHIFT, 0), &t, || Mode::Gui).is_empty());
+        assert!(m
+            .step(k(KeyCode::KEY_LEFTSHIFT, 0), &t, || Mode::Gui)
+            .is_empty());
     }
 
     #[test]

@@ -41,7 +41,14 @@ impl Binding {
 }
 
 /// 构造一条绑定，字符串在编译期由测试保证合法。
-fn b(id: &str, keys: &str, gui: Option<&str>, terminal: Option<&str>, enabled: bool, source: Source) -> Binding {
+fn b(
+    id: &str,
+    keys: &str,
+    gui: Option<&str>,
+    terminal: Option<&str>,
+    enabled: bool,
+    source: Source,
+) -> Binding {
     Binding {
         id: id.to_string(),
         pattern: KeyPattern::parse(keys).expect("内置按键模式必须合法"),
@@ -74,7 +81,12 @@ pub fn builtin_bindings() -> Vec<Binding> {
         on("cmd-g", "g", "ctrl+g", None),
         on("cmd-shift-g", "shift+g", "ctrl+shift+g", None),
         on("cmd-s", "s", "ctrl+s", None),
-        on("cmd-shift-v", "shift+v", "ctrl+shift+v", Some("ctrl+shift+v")),
+        on(
+            "cmd-shift-v",
+            "shift+v",
+            "ctrl+shift+v",
+            Some("ctrl+shift+v"),
+        ),
         on("cmd-o", "o", "ctrl+o", None),
         on("cmd-n", "n", "ctrl+n", Some("ctrl+shift+n")),
         on("cmd-t", "t", "ctrl+t", Some("ctrl+shift+t")),
@@ -116,10 +128,30 @@ pub fn builtin_bindings() -> Vec<Binding> {
         off("cmd-right", "right", "end", Some("end")),
         off("cmd-up", "up", "ctrl+home", Some("ctrl+home")),
         off("cmd-down", "down", "ctrl+end", Some("ctrl+end")),
-        off("cmd-shift-left", "shift+left", "shift+home", Some("shift+home")),
-        off("cmd-shift-right", "shift+right", "shift+end", Some("shift+end")),
-        off("cmd-shift-up", "shift+up", "ctrl+shift+home", Some("ctrl+shift+home")),
-        off("cmd-shift-down", "shift+down", "ctrl+shift+end", Some("ctrl+shift+end")),
+        off(
+            "cmd-shift-left",
+            "shift+left",
+            "shift+home",
+            Some("shift+home"),
+        ),
+        off(
+            "cmd-shift-right",
+            "shift+right",
+            "shift+end",
+            Some("shift+end"),
+        ),
+        off(
+            "cmd-shift-up",
+            "shift+up",
+            "ctrl+shift+home",
+            Some("ctrl+shift+home"),
+        ),
+        off(
+            "cmd-shift-down",
+            "shift+down",
+            "ctrl+shift+end",
+            Some("ctrl+shift+end"),
+        ),
         off("cmd-pageup", "pageup", "ctrl+pageup", None),
         off("cmd-pagedown", "pagedown", "ctrl+pagedown", None),
         off("cmd-shift-s", "shift+s", "ctrl+shift+s", None),
@@ -155,7 +187,10 @@ impl BindingTable {
 
     /// 按物理组合与模式解析出绑定 id 及目标 chord；仅匹配已启用的绑定。
     pub fn resolve(&self, pattern: KeyPattern, mode: Mode) -> Option<(String, Chord)> {
-        let b = self.bindings.iter().find(|b| b.pattern == pattern && b.enabled)?;
+        let b = self
+            .bindings
+            .iter()
+            .find(|b| b.pattern == pattern && b.enabled)?;
         let chord = b.target(mode)?.clone();
         Some((b.id.clone(), chord))
     }
@@ -212,8 +247,14 @@ pub fn list_bindings_text(bindings: &[Binding]) -> String {
             "{:<14} {:<18} {:<20} {:<20} {:<8} {}",
             b.id,
             b.pattern.label(),
-            b.gui.as_ref().map(|c| c.label()).unwrap_or_else(|| "-".to_string()),
-            b.terminal.as_ref().map(|c| c.label()).unwrap_or_else(|| "-".to_string()),
+            b.gui
+                .as_ref()
+                .map(|c| c.label())
+                .unwrap_or_else(|| "-".to_string()),
+            b.terminal
+                .as_ref()
+                .map(|c| c.label())
+                .unwrap_or_else(|| "-".to_string()),
             if b.enabled { "yes" } else { "no" },
             match b.source {
                 Source::Default => "default",
@@ -231,7 +272,10 @@ mod tests {
     use super::*;
 
     fn find(id: &str) -> Binding {
-        builtin_bindings().into_iter().find(|b| b.id == id).unwrap_or_else(|| panic!("缺少 {id}"))
+        builtin_bindings()
+            .into_iter()
+            .find(|b| b.id == id)
+            .unwrap_or_else(|| panic!("缺少 {id}"))
     }
 
     #[test]
@@ -246,7 +290,10 @@ mod tests {
         assert!(c.enabled);
         assert_eq!(c.pattern, KeyPattern::parse("c").unwrap());
         assert_eq!(c.target(Mode::Gui), Some(&Chord::parse("ctrl+c").unwrap()));
-        assert_eq!(c.target(Mode::Terminal), Some(&Chord::parse("ctrl+shift+c").unwrap()));
+        assert_eq!(
+            c.target(Mode::Terminal),
+            Some(&Chord::parse("ctrl+shift+c").unwrap())
+        );
 
         let x = find("cmd-x");
         assert!(x.enabled);
@@ -254,10 +301,16 @@ mod tests {
 
         let sz = find("cmd-shift-z");
         assert_eq!(sz.pattern, KeyPattern::parse("shift+z").unwrap());
-        assert_eq!(sz.target(Mode::Gui), Some(&Chord::parse("ctrl+shift+z").unwrap()));
+        assert_eq!(
+            sz.target(Mode::Gui),
+            Some(&Chord::parse("ctrl+shift+z").unwrap())
+        );
 
         let y = find("cmd-y");
-        assert_eq!(y.target(Mode::Terminal), Some(&Chord::parse("ctrl+y").unwrap()));
+        assert_eq!(
+            y.target(Mode::Terminal),
+            Some(&Chord::parse("ctrl+y").unwrap())
+        );
 
         let comma = find("cmd-comma");
         assert_eq!(comma.pattern, KeyPattern::parse("comma").unwrap());
@@ -268,7 +321,11 @@ mod tests {
         let mut seen = std::collections::HashMap::new();
         for b in builtin_bindings() {
             let key = (b.pattern.shift, b.pattern.code.0);
-            assert!(seen.insert(key, b.id.clone()).is_none(), "重复按键模式: {}", b.pattern.label());
+            assert!(
+                seen.insert(key, b.id.clone()).is_none(),
+                "重复按键模式: {}",
+                b.pattern.label()
+            );
         }
     }
 
@@ -287,16 +344,28 @@ mod tests {
             assert!(!find(&format!("cmd-{n}")).enabled);
         }
         for id in [
-            "cmd-left", "cmd-right", "cmd-up", "cmd-down",
-            "cmd-shift-left", "cmd-shift-right", "cmd-shift-up", "cmd-shift-down",
-            "cmd-pageup", "cmd-pagedown", "cmd-shift-s", "cmd-backspace",
+            "cmd-left",
+            "cmd-right",
+            "cmd-up",
+            "cmd-down",
+            "cmd-shift-left",
+            "cmd-shift-right",
+            "cmd-shift-up",
+            "cmd-shift-down",
+            "cmd-pageup",
+            "cmd-pagedown",
+            "cmd-shift-s",
+            "cmd-backspace",
         ] {
             assert!(!find(id).enabled, "{id} 应默认关闭");
         }
         assert_eq!(find("cmd-left").target(Mode::Gui), None);
         assert_eq!(find("cmd-left").gui, Some(Chord::parse("home").unwrap()));
         assert_eq!(find("cmd-up").gui, Some(Chord::parse("ctrl+home").unwrap()));
-        assert_eq!(find("cmd-backspace").gui, Some(Chord::parse("ctrl+backspace").unwrap()));
+        assert_eq!(
+            find("cmd-backspace").gui,
+            Some(Chord::parse("ctrl+backspace").unwrap())
+        );
     }
 
     #[test]
@@ -315,7 +384,10 @@ mod tests {
             t.resolve(KeyPattern::parse("c").unwrap(), Mode::Terminal),
             Some(("cmd-c".to_string(), Chord::parse("ctrl+shift+c").unwrap()))
         );
-        assert_eq!(t.resolve(KeyPattern::parse("x").unwrap(), Mode::Terminal), None);
+        assert_eq!(
+            t.resolve(KeyPattern::parse("x").unwrap(), Mode::Terminal),
+            None
+        );
         assert_eq!(t.resolve(KeyPattern::parse("d").unwrap(), Mode::Gui), None);
         assert_eq!(t.resolve(KeyPattern::parse("l").unwrap(), Mode::Gui), None);
     }
