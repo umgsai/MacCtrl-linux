@@ -12,17 +12,20 @@
 
 - 普通 GUI 窗口：`Cmd+X` → `Ctrl+X`
 - 终端窗口：`Cmd+C` → `Ctrl+Shift+C`（复制）、`Cmd+V` → `Ctrl+Shift+V`（粘贴），物理 `Ctrl+C` 保持原样（中断）
-- 白名单之外的 Super 组合原样交给桌面环境，不破坏 DDE / GNOME / KDE / XFCE 等桌面自身的 Super+E / Super+D / Super+方向键 / Super 启动器等快捷键
+- 未启用或未定义的 Super 组合原样交给桌面环境，不破坏 DDE / GNOME / KDE / XFCE 等桌面自身的 Super+E / Super+D / Super+方向键 / Super 启动器等快捷键
+
+工具内置一份常用快捷键目录（见第 7 节），每项都可单独开启/关闭；与桌面环境冲突的项默认关闭。
 
 ## 2. 目标与非目标
 
 ### 目标
 
-1. 仅转换白名单组合：`Super + {C, V, X, Z, S, A, F, T, W, N, Q, Y, R}`。
-2. 按当前焦点窗口是否为终端，选择不同的目标按键序列。
+1. 仅转换已启用的绑定（内置目录见第 7 节），未启用或未定义的组合透传。
+2. 按当前焦点窗口是否为终端，选择该绑定的 GUI 或终端目标按键序列。
 3. 终端内物理 `Ctrl+C` / `Ctrl+Z` / `Ctrl+S` 行为完全不受影响。
 4. **不区分键盘来源**：所有物理键盘（内置键盘、USB/蓝牙外接键盘、多键盘同时连接）行为一致；鼠标、触摸板、电源键、仅媒体键设备不受影响。
-5. 守护进程退出或崩溃后键盘立即恢复原生行为。
+5. 每条快捷键都可单独开启/关闭（内置默认值 + 用户配置 + 命令行覆盖）。
+6. 守护进程退出或崩溃后键盘立即恢复原生行为。
 
 ### 非目标（v1 明确不做）
 
@@ -87,29 +90,35 @@
 
 ### 5.2 状态与转移
 
-状态：`Idle`、`SuperPending`（收到 Super 按下但尚未转发）、`SuperForwarded`（Super 已转发，走透传）、`Consumed`（本次 Super 组合已被转换并吞掉）。
+状态：`Idle`、`SuperPending`（收到 Super 按下但尚未转发）、`SuperForwarded`（Super 已转发，走透传）、`Consumed`（本次组合已被转换并吞掉）。
+
+除 Super 外，只有 **Shift** 可以参与绑定（用于 `Cmd+Shift+Z` 这类组合）；Ctrl/Alt 参与的组合（Mac 的 `Cmd+Ctrl+*`、`Cmd+Option+*`）v1 不转换，一律透传。
 
 | 当前状态 | 输入事件 | 输出 | 新状态 |
 |---|---|---|---|
 | Idle | Super 按下 | 无 | SuperPending |
-| SuperPending | 白名单键按下，且无 Ctrl/Alt/Shift 同时按下 | 注入目标 chord（按下+释放），吞掉原键，不转发 Super | Consumed |
-| SuperPending | 白名单键按下，但有其他修饰键同时按下 | 转发 Super 按下 + 原键 | SuperForwarded |
-| SuperPending | 非白名单键按下 | 转发 Super 按下 + 原键 | SuperForwarded |
-| SuperPending | 其他修饰键（Ctrl/Alt/Shift）按下 | 转发 Super 按下 + 该修饰键 | SuperForwarded |
+| SuperPending | Shift 按下 | 无（暂存，不转发） | SuperPending |
+| SuperPending | 有绑定的键按下 | 注入目标 chord（按下+释放），吞掉原键；暂存的 Shift 一并吞掉 | Consumed |
+| SuperPending | 无绑定的键按下 | 转发 Super 按下 + 暂存 Shift 按下 + 原键按下 | SuperForwarded |
+| SuperPending | Ctrl / Alt 按下 | 转发 Super 按下 + 暂存 Shift 按下 + 该修饰键 | SuperForwarded |
+| SuperPending | Shift 松开（期间无其他键） | 转发 Super 按下 + Shift 按下+松开 | SuperForwarded |
 | SuperPending | 重复键（Super auto-repeat） | 无 | SuperPending |
-| SuperPending | Super 松开 | 注入 Super 按下+松开（启动器/修饰键语义保留） | Idle |
+| SuperPending | Super 松开 | 转发 Super 按下（+ 暂存 Shift 的按下/松开）+ Super 松开 | Idle |
 | SuperPending | 非按键事件（EV_MSC / EV_SYN / LED 等） | 原样转发 | SuperPending |
 | SuperForwarded | 任意事件（含 Super 松开） | 原样转发 | Super 松开后 Idle |
-| Consumed | 白名单键松开 / 重复键 | 无 | Consumed |
-| Consumed | 其他普通键按下/松开 | 原样转发（此时 Super 未被按下，按键为无修饰原键） | Consumed |
+| Consumed | 被映射键松开 / 重复键 | 无 | Consumed |
+| Consumed | 暂存 Shift 松开 | 无 | Consumed |
+| Consumed | 其他普通键按下/松开 | 原样转发（此时 Super 未被按下） | Consumed |
 | Consumed | Super 松开 | 无 | Idle |
 
 补充规则：
 
-- **"白名单键"的判定分两步**：先按当前焦点类型选出 GUI 表或终端表；若该键在表中有映射，按"有映射"处理（进入 `Consumed`）；若无映射（例如终端模式下的 `x/z/s/a/f/q`），按"非白名单键"处理，透传原始 Super 组合（进入 `SuperForwarded`）。
-- 白名单键的**松开事件**在 `Consumed` 状态一律吞掉，避免目标应用收到"只有松开没有按下"的异常序列。
+- **绑定匹配**：物理组合 = 实际按住的 Shift（无论按下先后）+ 键名，例如 `shift+z`；再按当前焦点类型取该绑定的 `gui` 或 `terminal` 目标。若该绑定在当前模式下没有目标（如终端模式下的 `cmd-x`），按"无绑定"处理，透传原始组合。
+- **Shift 已先于 Super 转发**：若 Shift 在 Super 之前按下（已被正常转发），匹配仍成功；注入时跳过"已转发且仍按住"的修饰键，避免重复按下；若目标 chord 需要 Shift，则物理 Shift 已提供。
+- **Shift 在 Super 之后按下**：Shift 被暂存，注入时由 chord 合成；其后的松开事件在 `Consumed` 中吞掉。
+- 被映射键的**松开事件**在 `Consumed` 状态一律吞掉，避免目标应用收到"只有松开没有按下"的异常序列。
 - 注入 chord 时先注入修饰键、再注入主键、再逆序释放修饰键，每个事件后附 `SYN_REPORT`。
-- 按住白名单组合不放时，不做 chord 重复注入，避免影响目标应用的按键重复逻辑。
+- 按住已映射组合不放时，不做 chord 重复注入，避免影响目标应用的按键重复逻辑。
 - `Super_R`（`KEY_RIGHTMETA`）与 `Super_L` 同等处理。
 
 ### 5.3 为什么可接受
@@ -135,28 +144,86 @@ qterminal, sakura
 
 IDE（VS Code / Cursor 等）不列入白名单，按 GUI 处理：它们内置终端中 `Ctrl+V` 本身即可粘贴，编辑器内 `Ctrl+C/V` 也能正常工作。
 
-## 7. 键表
+## 7. 快捷键目录（内置默认值）
 
-### 7.1 GUI 表
+id 命名规则为 `cmd-<键>` / `cmd-shift-<键>`，配置与命令行都用它引用。表中"透传"表示该模式下不拦截，原始 Super 组合照常发给系统（通常无动作）。
 
-| 物理组合 | 注入 |
-|---|---|
-| Super+C / V / X / Z / S / A / F / T / W / N / Q / Y / R | Ctrl + 对应键 |
+默认值策略：**关键编辑键默认开启；已知会遮蔽桌面快捷键或语义不一致的项默认关闭**，并在"说明"列写明原因，用户可按需打开。
 
-### 7.2 终端表
+### 7.1 默认开启
 
-| 物理组合 | 注入 | 说明 |
-|---|---|---|
-| Super+C | Ctrl+Shift+C | 终端复制选中内容；无选中时无动作，不会中断进程 |
-| Super+V | Ctrl+Shift+V | 终端粘贴 |
-| Super+T | Ctrl+Shift+T | 新建标签页 |
-| Super+W | Ctrl+Shift+W | 关闭标签页 |
-| Super+N | Ctrl+Shift+N | 新建窗口 |
-| Super+R | Ctrl+R | readline 反向搜索（安全且常用） |
-| Super+Y | Ctrl+Y | readline yank（安全） |
-| Super+X / Z / S / A / F / Q | 透传原始 Super 组合 | 避免 `Ctrl+Z` 挂起进程、`Ctrl+S` 冻结输出等破坏性行为 |
+| id | 物理组合 | GUI 注入 | 终端注入 |
+|---|---|---|---|
+| cmd-c | Super+C | Ctrl+C | Ctrl+Shift+C（复制） |
+| cmd-v | Super+V | Ctrl+V | Ctrl+Shift+V（粘贴） |
+| cmd-x | Super+X | Ctrl+X | 透传 |
+| cmd-z | Super+Z | Ctrl+Z | 透传 |
+| cmd-shift-z | Super+Shift+Z | Ctrl+Shift+Z | 透传 |
+| cmd-a | Super+A | Ctrl+A | 透传 |
+| cmd-f | Super+F | Ctrl+F | 透传 |
+| cmd-g | Super+G | Ctrl+G | 透传 |
+| cmd-shift-g | Super+Shift+G | Ctrl+Shift+G | 透传 |
+| cmd-s | Super+S | Ctrl+S | 透传 |
+| cmd-shift-v | Super+Shift+V | Ctrl+Shift+V | Ctrl+Shift+V |
+| cmd-o | Super+O | Ctrl+O | 透传 |
+| cmd-n | Super+N | Ctrl+N | Ctrl+Shift+N（新窗口） |
+| cmd-t | Super+T | Ctrl+T | Ctrl+Shift+T（新标签） |
+| cmd-w | Super+W | Ctrl+W | Ctrl+Shift+W（关标签） |
+| cmd-q | Super+Q | Ctrl+Q | 透传 |
+| cmd-r | Super+R | Ctrl+R | Ctrl+R（反向搜索） |
+| cmd-shift-r | Super+Shift+R | Ctrl+Shift+R | 透传 |
+| cmd-y | Super+Y | Ctrl+Y | Ctrl+Y（readline yank） |
+| cmd-b | Super+B | Ctrl+B | 透传 |
+| cmd-i | Super+I | Ctrl+I | 透传 |
+| cmd-u | Super+U | Ctrl+U | 透传 |
+| cmd-k | Super+K | Ctrl+K | 透传 |
+| cmd-comma | Super+, | Ctrl+, | 透传 |
+| cmd-slash | Super+/ | Ctrl+/ | 透传 |
+| cmd-equal | Super+= | Ctrl+= | 透传 |
+| cmd-minus | Super+- | Ctrl+- | 透传 |
+| cmd-0 | Super+0 | Ctrl+0 | 透传 |
+| cmd-enter | Super+Enter | Ctrl+Enter | 透传 |
+| cmd-shift-t | Super+Shift+T | Ctrl+Shift+T | 透传 |
+| cmd-shift-w | Super+Shift+W | Ctrl+Shift+W | 透传 |
+| cmd-shift-n | Super+Shift+N | Ctrl+Shift+N | 透传 |
+| cmd-shift-f | Super+Shift+F | Ctrl+Shift+F | 透传 |
+| cmd-shift-h | Super+Shift+H | Ctrl+Shift+H | 透传 |
+| cmd-shift-p | Super+Shift+P | Ctrl+Shift+P | 透传 |
 
-上表终端快捷键遵循主流终端（Deepin Terminal、GNOME Terminal、Konsole、Xfce4 Terminal、Tilix、Alacritty、Kitty、WezTerm 等）的默认键位。`xterm` / `urxvt` 的复制粘贴默认键位不同，若使用需在 `[terminal_map]` 中覆盖。任何终端的键位被用户改过时，同样通过配置覆盖，不改代码。
+终端列"透传"的原因：这些组合在终端里有破坏性或不同语义，例如 `Ctrl+X`（readline 前缀）、`Ctrl+Z`（挂起进程）、`Ctrl+S`（冻结输出）、`Ctrl+A`（行首）、`Ctrl+F`（前移一字符）、`Ctrl+U`（删至行首）、`Ctrl+K`（删至行尾）、`Ctrl+Q`（XON）。终端内的复制/粘贴统一走 `Ctrl+Shift+C/V`，不碰 `Ctrl+C`。
+
+### 7.2 默认关闭（已知冲突或语义差异）
+
+| id | 物理组合 | GUI 注入 | 终端注入 | 默认关闭原因 |
+|---|---|---|---|---|
+| cmd-d | Super+D | Ctrl+D | 透传 | Super+D = 显示桌面 |
+| cmd-e | Super+E | Ctrl+E | 透传 | Super+E = 文件管理器 |
+| cmd-l | Super+L | Ctrl+L | 透传 | Super+L = 锁屏 |
+| cmd-p | Super+P | Ctrl+P | 透传 | Super+P = 切换显示模式 |
+| cmd-1 … cmd-9 | Super+1…9 | Ctrl+1…9 | 透传 | Super+1…9 = 工作区/应用切换 |
+| cmd-left | Super+Left | Home | Home | Super+Left = 窗口贴左 |
+| cmd-right | Super+Right | End | End | Super+Right = 窗口贴右 |
+| cmd-up | Super+Up | Ctrl+Home | Ctrl+Home | Super+Up = 最大化 |
+| cmd-down | Super+Down | Ctrl+End | Ctrl+End | Super+Down = 还原窗口 |
+| cmd-shift-left | Super+Shift+Left | Shift+Home | Shift+Home | Super+Shift+Left = 移动窗口到左侧工作区 |
+| cmd-shift-right | Super+Shift+Right | Shift+End | Shift+End | 同上 |
+| cmd-shift-up | Super+Shift+Up | Ctrl+Shift+Home | Ctrl+Shift+Home | 同上，向上移动 |
+| cmd-shift-down | Super+Shift+Down | Ctrl+Shift+End | Ctrl+Shift+End | 同上，向下移动 |
+| cmd-pageup | Super+PageUp | Ctrl+PageUp | 透传 | Super+PageUp = 切换工作区 |
+| cmd-pagedown | Super+PageDown | Ctrl+PageDown | 透传 | Super+PageDown = 切换工作区 |
+| cmd-shift-s | Super+Shift+S | Ctrl+Shift+S | 透传 | Super+Shift+S = 区域截图（GNOME/DDE） |
+| cmd-backspace | Super+Backspace | Ctrl+Backspace | 透传 | 语义不同：macOS 删到行首，Linux `Ctrl+Backspace` 删一个词 |
+
+说明：箭头类绑定若开启，会遮蔽窗口平铺/工作区快捷键；`cmd-left` / `cmd-right` 的 GUI 目标按 macOS 语义取 `Home` / `End`，若更习惯 Linux 的"按词跳转"可在配置里改成 `ctrl+left` / `ctrl+right`。
+
+### 7.3 明确不内置
+
+以下组合不在内置目录中。它们涉及桌面级行为，应由桌面环境处理；如确需接管，可在用户配置里自定义，但会遮蔽桌面原有功能，不推荐：
+
+- `Super+Tab`、`Super+Space`、`Super+\``：应用切换、输入法切换、窗口切换。
+- `Super+H`、`Super+M`、`Super+Shift+3/4/5`：隐藏、最小化、系统截图。
+- `Super+F1…F12`：功能键（多数为应用或桌面保留）。
+- `Super+Ctrl+*`、`Super+Alt+*`：Mac 的 `Cmd+Ctrl` / `Cmd+Option` 组合，v1 一律透传。
 
 ## 8. 配置
 
@@ -178,43 +245,51 @@ terminal_classes = [
   "terminator", "st", "mate-terminal", "lxterminal", "qterminal", "sakura",
 ]
 
-[gui_map]
-c = "ctrl+c"
-v = "ctrl+v"
-x = "ctrl+x"
-z = "ctrl+z"
-s = "ctrl+s"
-a = "ctrl+a"
-f = "ctrl+f"
-t = "ctrl+t"
-w = "ctrl+w"
-n = "ctrl+n"
-q = "ctrl+q"
-y = "ctrl+y"
-r = "ctrl+r"
+# ---- 开关与覆盖 ----
+# 只需写你要改的项；未出现的 id 使用内置默认值。
+# 开启默认关闭项：
+[bindings.cmd-d]
+enabled = true
 
-[terminal_map]
-c = "ctrl+shift+c"
-v = "ctrl+shift+v"
-t = "ctrl+shift+t"
-w = "ctrl+shift+w"
-n = "ctrl+shift+n"
-r = "ctrl+r"
-y = "ctrl+y"
-# 未列出的键（x/z/s/a/f/q）在终端中原样透传
+# 关闭默认开启项：
+[bindings.cmd-b]
+enabled = false
+
+# 覆盖内置目标键（例如把 Home 改成按词跳转）：
+[bindings.cmd-left]
+enabled = true
+gui = "ctrl+left"
+terminal = "ctrl+left"
+
+# 新增自定义绑定（必须提供 keys 与 gui；keys 只支持可选的 shift 前缀）：
+[bindings.cmd-shift-k]
+keys = "shift+k"
+gui = "ctrl+shift+k"
+terminal = ""           # 空字符串 = 终端中透传
 ```
 
-规则：`terminal_map` 中未出现的白名单键，在终端模式下透传原始 Super 组合；`gui_map` 中未出现的白名单键，在 GUI 模式下同样透传。解析 chord 字符串时若遇到未知键名，启动即报错退出，避免静默错误。
+规则：
+
+- `keys` 只描述 Super 之后的组合，仅允许可选前缀 `shift`（如 `z`、`shift+z`）；不支持 `ctrl` / `alt` / `meta`。
+- `gui` / `terminal` 为空字符串表示该模式下透传；`terminal` 未提供则沿用该 id 的内置终端目标。
+- 用户配置按 id 合并到内置目录：`enabled` / `gui` / `terminal` 可分别覆盖；新 id 追加。
+- 同一物理组合在启用状态下被多个 id 使用时，启动即报错并列出冲突 id。
+- chord 或键名解析失败时启动即报错，输出 id 与出错字段，不进入抓取状态。
+- 命令行 `--enable <id>` / `--disable <id>` 只影响本次进程，不写回文件。
 
 ## 9. CLI
 
 ```
-cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--dry-run] [--verbose]
+cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--list-bindings]
+         [--enable <id>]... [--disable <id>]... [--dry-run] [--verbose]
 
-  --list-devices   列出所有事件设备：名称、路径、VID:PID、是否被判为键盘、是否可读
-  --device         只处理名称匹配的键盘（可重复；默认处理所有键盘）
-  --dry-run        只输出决策（当前焦点类型、将注入的 chord），不创建 uinput、不注入
-  --verbose        输出每个被处理事件的调试日志
+  --list-devices    列出所有事件设备：名称、路径、VID:PID、是否被判为键盘、是否可读
+  --list-bindings   列出绑定目录：id、物理组合、GUI/终端目标、是否启用、取值来源
+  --device          只处理名称匹配的键盘（可重复；默认处理所有键盘）
+  --enable <id>     本次运行强制启用某个绑定（可重复，不写回配置）
+  --disable <id>    本次运行强制关闭某个绑定（可重复，不写回配置）
+  --dry-run         只输出决策（当前焦点类型、命中的绑定 id、将注入的 chord），不创建 uinput、不注入
+  --verbose         输出每个被处理事件的调试日志
 ```
 
 ## 10. 权限与部署
@@ -278,24 +353,28 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--dry-
 
 ### 单元测试（`cargo test`）
 
-- 状态机：第 5.2 节每一条转移一行用例（输入事件序列 → 期望输出事件序列）。
-- 键表解析：`ctrl+shift+c` 等字符串解析、未知键名报错、缺失键的透传语义。
+- 状态机：第 5.2 节每一条转移一行用例（输入事件序列 → 期望输出事件序列），含 Shift 先按/后按两种顺序。
+- 绑定合并与开关：内置默认 + 用户覆盖 + 命令行覆盖的优先级；`enabled=false` 后透传；`terminal=""` 透传；新 id 追加；启用状态下物理组合重复时报错。
+- 默认值断言：第 7.1 节每项默认 `enabled=true`，第 7.2 节每项默认 `enabled=false`，防止后续改动误调。
+- chord 解析：`ctrl+shift+c`、`home`、`comma` 等字符串解析，未知键名报错，注入时跳过已按住的修饰键。
 - 修饰键跟踪：多修饰键组合、重复键抑制、松开顺序。
 - 终端判定：WM_CLASS 精确匹配（大小写、instance/class 两种取值）。
 - 设备筛选：键盘能力位判定（含电源键/纯媒体键的否定用例）、自身虚拟设备排除、include/exclude 模式匹配。
 
 ### 手工验证清单
 
-1. 文本编辑器：`Cmd+C/V/X/Z/S/A/F` 均等价于 `Ctrl+*`。
+1. 文本编辑器：按第 7.1 节逐项验证默认开启的绑定（复制/粘贴/撤销/重做/保存/查找/打开/新建/标签页/格式/缩放/提交等）。
 2. 终端（当前环境 deepin-terminal，其他环境至少再验证一个终端）：`Cmd+C` 复制选中文本；无选中时按 `Cmd+C` 不影响 `sleep 100`；`Cmd+V` 粘贴。
-3. 终端内物理 `Ctrl+C` 仍中断 `sleep 100`；`Ctrl+Z`、`Ctrl+S` 行为不变。
+3. 终端内物理 `Ctrl+C` 仍中断 `sleep 100`；`Ctrl+Z`、`Ctrl+S`、`Ctrl+A`、`Ctrl+K`、`Ctrl+U` 行为不变。
 4. `Cmd+T/W/N` 在终端内为新建/关闭标签页、新建窗口；在浏览器中为新建/关闭标签页、新窗口。
-5. 桌面环境自身的 Super 组合（如 Super+E、Super+D、Super+方向键、单独按 Super）行为与未安装时一致；换桌面环境时按各自绑定重测该项。
-6. 按住 `Cmd+C` 不产生连续注入；快速连按无丢键。
-7. **内置键盘**单独使用即满足第 1–5 项；再接一块外接键盘，两块键盘交替输入均正常。
-8. 热插拔：运行中插入/拔出外接键盘，功能自动生效/移除；杀掉守护进程后所有键盘立即可用。
-9. `--dry-run` 在 GUI 与终端中输出的判定与 chord 正确。
-10. 在非 EWMH 或不同桌面环境下，`--verbose` 显示焦点查询走了哪条路径且判定正确。
+5. 桌面环境自身的 Super 组合（如 Super+E、Super+D、Super+L、Super+P、Super+方向键、Super+1、单独按 Super）行为与未安装时一致；换桌面环境时按各自绑定重测该项。
+6. 开关生效：`--list-bindings` 显示默认状态；`--disable cmd-c` 后 `Cmd+C` 在 GUI 中不再复制；`--enable cmd-d` 后 `Cmd+D` 生效且桌面"显示桌面"被遮蔽（验证遮蔽行为符合预期）。
+7. Shift 组合：`Cmd+Shift+Z` 在 Shift 先按、后按两种顺序下都能重做；`Cmd+Shift+T/N/W` 正常。
+8. 按住 `Cmd+C` 不产生连续注入；快速连按无丢键。
+9. **内置键盘**单独使用即满足第 1–7 项；再接一块外接键盘，两块键盘交替输入均正常。
+10. 热插拔：运行中插入/拔出外接键盘，功能自动生效/移除；杀掉守护进程后所有键盘立即可用。
+11. `--dry-run` 在 GUI 与终端中输出的判定、命中 id 与 chord 正确。
+12. 在非 EWMH 或不同桌面环境下，`--verbose` 显示焦点查询走了哪条路径且判定正确。
 
 ## 13. 工程结构
 
@@ -304,10 +383,10 @@ cmd2ctrl-linux/
 ├── Cargo.toml
 ├── src/
 │   ├── main.rs        # CLI 解析、组件装配、事件循环
-│   ├── config.rs      # TOML 加载与默认值、chord 解析
+│   ├── config.rs      # TOML 加载、与内置目录合并、chord 解析
 │   ├── device.rs      # 枚举所有键盘型设备、能力检测、热插拔重扫、EVIOCGRAB
 │   ├── state.rs       # 延迟修饰键状态机（无 IO 依赖，纯逻辑）
-│   ├── mapping.rs     # GUI/终端键表、按键名 ↔ keycode
+│   ├── mapping.rs     # 内置绑定目录、启用状态、按键名 ↔ keycode
 │   ├── focus.rs       # x11rb：_NET_ACTIVE_WINDOW、WM_CLASS、终端判定
 │   └── inject.rs      # uinput 虚拟键盘创建与事件注入
 ├── config/config.toml # 示例配置
@@ -324,12 +403,13 @@ cmd2ctrl-linux/
 
 | 风险 | 应对 |
 |---|---|
-| 终端默认键位与用户实际配置不一致（不同终端/自定义键位） | `terminal_map` 可覆盖；默认表覆盖主流终端，xterm/urxvt 等需按需配置 |
+| 终端默认键位与用户实际配置不一致（不同终端/自定义键位） | 每条绑定的 `terminal` 可覆盖；默认表覆盖主流终端，xterm/urxvt 等需按需配置 |
 | 焦点查询延迟影响输入手感 | 先直接查询；若不达标改为缓存 + 后台刷新 |
 | 多个键盘同时输入 | 每设备独立状态机 + 共享注入锁，事件顺序按到达串行化 |
 | 跨设备组合键（一块键盘按 Super、另一块按 C） | 不支持：各设备状态独立，不会组合；属于可接受的极端场景 |
 | 抓取所有键盘后占用/权限异常 | 先建 uinput 再抓取；写入失败立即释放抓取并退出；单个设备失败不影响其他设备 |
 | 蓝牙键盘路径变化 | 每 2 秒重扫设备列表，按能力与名称重新识别，不依赖固定路径 |
-| 与桌面环境全局快捷键冲突（DDE/GNOME/KDE 等 Super 绑定各不相同） | 白名单仅覆盖编辑/应用类组合，桌面组合不接管；换桌面时按清单第 5 项验证，必要时调整白名单 |
+| 与桌面环境全局快捷键冲突（DDE/GNOME/KDE 等 Super 绑定各不相同） | 已知冲突项默认关闭并在目录中标注；由于是内核级抓取，启用即会**遮蔽**桌面快捷键，这是开关的显式后果，`--list-bindings` 可随时核对 |
+| 快捷键目录长期演进 | 目录集中在 `mapping.rs` 的内置表，新增/调整只需改一处，并有默认值断言测试防止误改 |
 | 非 EWMH 窗口管理器下焦点判定失效 | `GetInputFocus` + 向上查找带 `WM_CLASS` 的祖先窗口；仍失败则回退终端表 |
 | Wayland 会话 | v1 不支持，启动时检测 `XDG_SESSION_TYPE` 并给出明确提示后退出 |
