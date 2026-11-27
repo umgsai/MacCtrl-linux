@@ -397,7 +397,7 @@ cmd2ctrl-linux/
 └── docs/superpowers/specs/2026-11-27-cmd2ctrl-design.md
 ```
 
-依赖：`evdev`（含 uinput 支持）、`x11rb`、`clap`、`serde`、`toml`、`regex`、`anyhow`、`log` + `env_logger`。
+依赖：`evdev`（含 uinput 支持）、`x11rb`、`clap`、`serde`、`toml`、`anyhow`、`log` + `env_logger`。
 
 ## 14. 风险与已决策项
 
