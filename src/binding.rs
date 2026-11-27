@@ -57,6 +57,11 @@ fn on(id: &str, keys: &str, gui: &str, terminal: Option<&str>) -> Binding {
     b(id, keys, Some(gui), terminal, true, Source::Default)
 }
 
+/// 构造一条默认关闭的内置绑定。
+fn off(id: &str, keys: &str, gui: &str, terminal: Option<&str>) -> Binding {
+    b(id, keys, Some(gui), terminal, false, Source::Default)
+}
+
 pub fn builtin_bindings() -> Vec<Binding> {
     vec![
         on("cmd-c", "c", "ctrl+c", Some("ctrl+shift+c")),
@@ -94,6 +99,31 @@ pub fn builtin_bindings() -> Vec<Binding> {
         on("cmd-shift-f", "shift+f", "ctrl+shift+f", None),
         on("cmd-shift-h", "shift+h", "ctrl+shift+h", None),
         on("cmd-shift-p", "shift+p", "ctrl+shift+p", None),
+        off("cmd-d", "d", "ctrl+d", None),
+        off("cmd-e", "e", "ctrl+e", None),
+        off("cmd-l", "l", "ctrl+l", None),
+        off("cmd-p", "p", "ctrl+p", None),
+        off("cmd-1", "1", "ctrl+1", None),
+        off("cmd-2", "2", "ctrl+2", None),
+        off("cmd-3", "3", "ctrl+3", None),
+        off("cmd-4", "4", "ctrl+4", None),
+        off("cmd-5", "5", "ctrl+5", None),
+        off("cmd-6", "6", "ctrl+6", None),
+        off("cmd-7", "7", "ctrl+7", None),
+        off("cmd-8", "8", "ctrl+8", None),
+        off("cmd-9", "9", "ctrl+9", None),
+        off("cmd-left", "left", "home", Some("home")),
+        off("cmd-right", "right", "end", Some("end")),
+        off("cmd-up", "up", "ctrl+home", Some("ctrl+home")),
+        off("cmd-down", "down", "ctrl+end", Some("ctrl+end")),
+        off("cmd-shift-left", "shift+left", "shift+home", Some("shift+home")),
+        off("cmd-shift-right", "shift+right", "shift+end", Some("shift+end")),
+        off("cmd-shift-up", "shift+up", "ctrl+shift+home", Some("ctrl+shift+home")),
+        off("cmd-shift-down", "shift+down", "ctrl+shift+end", Some("ctrl+shift+end")),
+        off("cmd-pageup", "pageup", "ctrl+pageup", None),
+        off("cmd-pagedown", "pagedown", "ctrl+pagedown", None),
+        off("cmd-shift-s", "shift+s", "ctrl+shift+s", None),
+        off("cmd-backspace", "backspace", "ctrl+backspace", None),
     ]
 }
 
@@ -141,5 +171,37 @@ mod tests {
             let key = (b.pattern.shift, b.pattern.code.0);
             assert!(seen.insert(key, b.id.clone()).is_none(), "重复按键模式: {}", b.pattern.label());
         }
+    }
+
+    #[test]
+    fn disabled_count_is_25() {
+        let n = builtin_bindings().iter().filter(|b| !b.enabled).count();
+        assert_eq!(n, 25);
+    }
+
+    #[test]
+    fn disabled_spot_checks() {
+        for id in ["cmd-d", "cmd-e", "cmd-l", "cmd-p"] {
+            assert!(!find(id).enabled, "{id} 应默认关闭");
+        }
+        for n in 1..=9 {
+            assert!(!find(&format!("cmd-{n}")).enabled);
+        }
+        for id in [
+            "cmd-left", "cmd-right", "cmd-up", "cmd-down",
+            "cmd-shift-left", "cmd-shift-right", "cmd-shift-up", "cmd-shift-down",
+            "cmd-pageup", "cmd-pagedown", "cmd-shift-s", "cmd-backspace",
+        ] {
+            assert!(!find(id).enabled, "{id} 应默认关闭");
+        }
+        assert_eq!(find("cmd-left").target(Mode::Gui), None);
+        assert_eq!(find("cmd-left").gui, Some(Chord::parse("home").unwrap()));
+        assert_eq!(find("cmd-up").gui, Some(Chord::parse("ctrl+home").unwrap()));
+        assert_eq!(find("cmd-backspace").gui, Some(Chord::parse("ctrl+backspace").unwrap()));
+    }
+
+    #[test]
+    fn total_count_is_60() {
+        assert_eq!(builtin_bindings().len(), 60);
     }
 }
