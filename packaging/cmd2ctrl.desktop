@@ -2,6 +2,8 @@
 Type=Application
 Name=cmd2ctrl
 Comment=Map Mac Command key to Ctrl (terminal-aware)
-Exec=cmd2ctrl
-X-GNOME-Autostart-enabled=true
-NoDisplay=true
+Exec=systemctl --user start cmd2ctrl
+Icon=cmd2ctrl
+Terminal=false
+Categories=Utility;
+Keywords=keyboard;remap;command;ctrl;mac;
