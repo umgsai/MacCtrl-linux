@@ -127,6 +127,105 @@ pub fn builtin_bindings() -> Vec<Binding> {
     ]
 }
 
+/// 绑定表：持有全部绑定，并提供按物理组合查找与启停控制。
+#[derive(Debug)]
+pub struct BindingTable {
+    bindings: Vec<Binding>,
+}
+
+impl BindingTable {
+    /// 构造绑定表；已启用的绑定之间不允许出现重复的物理按键组合。
+    pub fn new(bindings: Vec<Binding>) -> Result<Self> {
+        let mut seen: HashMap<(bool, u16), String> = HashMap::new();
+        for b in &bindings {
+            if !b.enabled {
+                continue;
+            }
+            let key = (b.pattern.shift, b.pattern.code.0);
+            if let Some(prev) = seen.insert(key, b.id.clone()) {
+                bail!(
+                    "按键模式 {} 被多个已启用绑定使用: {prev} / {}",
+                    b.pattern.label(),
+                    b.id
+                );
+            }
+        }
+        Ok(Self { bindings })
+    }
+
+    /// 按物理组合与模式解析出绑定 id 及目标 chord；仅匹配已启用的绑定。
+    pub fn resolve(&self, pattern: KeyPattern, mode: Mode) -> Option<(String, Chord)> {
+        let b = self.bindings.iter().find(|b| b.pattern == pattern && b.enabled)?;
+        let chord = b.target(mode)?.clone();
+        Some((b.id.clone(), chord))
+    }
+
+    /// 切换指定 id 的启用状态。
+    pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Result<()> {
+        let b = self
+            .bindings
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| anyhow::anyhow!("未知绑定 id: {id}"))?;
+        b.enabled = enabled;
+        Ok(())
+    }
+
+    pub fn all(&self) -> &[Binding] {
+        &self.bindings
+    }
+
+    /// 汇总所有绑定可能注入的按键（含修饰键），去重后返回。
+    pub fn all_injected_keys(&self) -> Vec<evdev::KeyCode> {
+        let mut keys = Vec::new();
+        for b in &self.bindings {
+            for chord in [b.gui.as_ref(), b.terminal.as_ref()].into_iter().flatten() {
+                keys.push(chord.code);
+                for m in &chord.mods {
+                    keys.push(match m {
+                        crate::key::Modifier::Ctrl => evdev::KeyCode::KEY_LEFTCTRL,
+                        crate::key::Modifier::Shift => evdev::KeyCode::KEY_LEFTSHIFT,
+                        crate::key::Modifier::Alt => evdev::KeyCode::KEY_LEFTALT,
+                    });
+                }
+            }
+        }
+        keys.sort_by_key(|k| k.0);
+        keys.dedup();
+        keys
+    }
+}
+
+/// 生成供 `list` 命令展示的绑定表格文本。
+pub fn list_bindings_text(bindings: &[Binding]) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    writeln!(
+        out,
+        "{:<14} {:<18} {:<20} {:<20} {:<8} {}",
+        "ID", "物理组合", "GUI", "终端", "启用", "来源"
+    )
+    .unwrap();
+    for b in bindings {
+        writeln!(
+            out,
+            "{:<14} {:<18} {:<20} {:<20} {:<8} {}",
+            b.id,
+            b.pattern.label(),
+            b.gui.as_ref().map(|c| c.label()).unwrap_or_else(|| "-".to_string()),
+            b.terminal.as_ref().map(|c| c.label()).unwrap_or_else(|| "-".to_string()),
+            if b.enabled { "yes" } else { "no" },
+            match b.source {
+                Source::Default => "default",
+                Source::Config => "config",
+                Source::Cli => "cli",
+            }
+        )
+        .unwrap();
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,5 +302,53 @@ mod tests {
     #[test]
     fn total_count_is_60() {
         assert_eq!(builtin_bindings().len(), 60);
+    }
+
+    #[test]
+    fn table_resolves_enabled_only() {
+        let t = BindingTable::new(builtin_bindings()).unwrap();
+        assert_eq!(
+            t.resolve(KeyPattern::parse("c").unwrap(), Mode::Gui),
+            Some(("cmd-c".to_string(), Chord::parse("ctrl+c").unwrap()))
+        );
+        assert_eq!(
+            t.resolve(KeyPattern::parse("c").unwrap(), Mode::Terminal),
+            Some(("cmd-c".to_string(), Chord::parse("ctrl+shift+c").unwrap()))
+        );
+        assert_eq!(t.resolve(KeyPattern::parse("x").unwrap(), Mode::Terminal), None);
+        assert_eq!(t.resolve(KeyPattern::parse("d").unwrap(), Mode::Gui), None);
+        assert_eq!(t.resolve(KeyPattern::parse("l").unwrap(), Mode::Gui), None);
+    }
+
+    #[test]
+    fn table_rejects_duplicate_enabled_pattern() {
+        let mut list = builtin_bindings();
+        list.push(on("cmd-c-dup", "c", "ctrl+c", None));
+        let err = BindingTable::new(list).unwrap_err().to_string();
+        assert!(err.contains("cmd-c-dup"), "{err}");
+        assert!(err.contains("cmd-c"), "{err}");
+    }
+
+    #[test]
+    fn set_enabled_toggles_lookup() {
+        let mut t = BindingTable::new(builtin_bindings()).unwrap();
+        t.set_enabled("cmd-d", true).unwrap();
+        assert_eq!(
+            t.resolve(KeyPattern::parse("d").unwrap(), Mode::Gui),
+            Some(("cmd-d".to_string(), Chord::parse("ctrl+d").unwrap()))
+        );
+        t.set_enabled("cmd-c", false).unwrap();
+        assert_eq!(t.resolve(KeyPattern::parse("c").unwrap(), Mode::Gui), None);
+    }
+
+    #[test]
+    fn list_text_contains_columns_and_source() {
+        let t = BindingTable::new(builtin_bindings()).unwrap();
+        let text = list_bindings_text(t.all());
+        assert!(text.contains("ID"));
+        assert!(text.contains("cmd-c"));
+        assert!(text.contains("super+c"));
+        assert!(text.contains("default"));
+        assert!(text.lines().count() >= 61);
     }
 }
