@@ -25,6 +25,22 @@ sudo dpkg -i cmd2ctrl_0.1.0-1_amd64.deb
 systemctl --user enable --now cmd2ctrl
 ```
 
+## 卸载
+
+```bash
+# 停掉用户服务
+systemctl --user disable --now cmd2ctrl
+
+# 卸载 deb
+sudo dpkg -r cmd2ctrl
+
+# （可选）删除配置文件
+rm -rf ~/.config/cmd2ctrl
+
+# （可选）从 input 组移除自己
+gpasswd -d "$USER" input
+```
+
 ## 构建
 
 ```bash
