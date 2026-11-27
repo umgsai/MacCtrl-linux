@@ -1,0 +1,30 @@
+# cmd2ctrl 示例配置。复制到 ~/.config/cmd2ctrl/config.toml 后按需修改。
+
+[device]
+# 留空 = 处理所有键盘；填入名称子串可限制范围（不区分大小写）
+include_patterns = []
+exclude_patterns = []
+
+[x11]
+# 留空 = 使用内置终端白名单（deepin-terminal、gnome-terminal、kitty 等）
+terminal_classes = []
+
+# 开启默认关闭的项
+[bindings.cmd-d]
+enabled = true
+
+# 关闭默认开启的项
+[bindings.cmd-b]
+enabled = false
+
+# 覆盖目标键：把 Home 改成"按词跳转"
+# [bindings.cmd-left]
+# enabled = true
+# gui = "ctrl+left"
+# terminal = "ctrl+left"
+
+# 自定义新绑定：物理 Super+Shift+K -> Ctrl+Shift+K
+# [bindings.cmd-shift-k]
+# keys = "shift+k"
+# gui = "ctrl+shift+k"
+# terminal = ""

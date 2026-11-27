@@ -2,7 +2,7 @@
 
 - 日期：2026-11-27
 - 目标平台：Linux / X11（不限发行版与桌面环境；Deepin 25 + DDE 仅为当前验证环境）
-- 状态：待实现
+- 状态：已实现（单元测试与 CLI 冒烟通过；真机键盘验证需先配置 `/dev/uinput` 权限）
 
 ## 1. 背景
 
@@ -104,9 +104,10 @@
 | SuperPending | Shift 松开（期间无其他键） | 转发 Super 按下 + Shift 按下+松开 | SuperForwarded |
 | SuperPending | 重复键（Super auto-repeat） | 无 | SuperPending |
 | SuperPending | Super 松开 | 转发 Super 按下（+ 暂存 Shift 的按下/松开）+ Super 松开 | Idle |
-| SuperPending | 非按键事件（EV_MSC / EV_SYN / LED 等） | 原样转发 | SuperPending |
+| SuperPending | 非按键事件（EV_SYN / EV_MSC / EV_LED 等） | 丢弃（`uinput.emit` 自动补 `SYN_REPORT`） | SuperPending |
 | SuperForwarded | 任意事件（含 Super 松开） | 原样转发 | Super 松开后 Idle |
 | Consumed | 被映射键松开 / 重复键 | 无 | Consumed |
+| Consumed | 被映射键再次按下（Super 仍按住） | 重新注入目标 chord（避免"只按下不松开"卡键） | Consumed |
 | Consumed | 暂存 Shift 松开 | 无 | Consumed |
 | Consumed | 其他普通键按下/松开 | 原样转发（此时 Super 未被按下） | Consumed |
 | Consumed | Super 松开 | 无 | Idle |

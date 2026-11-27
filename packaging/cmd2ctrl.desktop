@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=cmd2ctrl
+Comment=Map Mac Command key to Ctrl (terminal-aware)
+Exec=cmd2ctrl
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
