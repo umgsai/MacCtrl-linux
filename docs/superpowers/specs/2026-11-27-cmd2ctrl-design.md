@@ -152,67 +152,67 @@ id 命名规则为 `cmd-<键>` / `cmd-shift-<键>`，配置与命令行都用它
 
 ### 7.1 默认开启
 
-| id | 物理组合 | GUI 注入 | 终端注入 |
-|---|---|---|---|
-| cmd-c | Super+C | Ctrl+C | Ctrl+Shift+C（复制） |
-| cmd-v | Super+V | Ctrl+V | Ctrl+Shift+V（粘贴） |
-| cmd-x | Super+X | Ctrl+X | 透传 |
-| cmd-z | Super+Z | Ctrl+Z | 透传 |
-| cmd-shift-z | Super+Shift+Z | Ctrl+Shift+Z | 透传 |
-| cmd-a | Super+A | Ctrl+A | 透传 |
-| cmd-f | Super+F | Ctrl+F | 透传 |
-| cmd-g | Super+G | Ctrl+G | 透传 |
-| cmd-shift-g | Super+Shift+G | Ctrl+Shift+G | 透传 |
-| cmd-s | Super+S | Ctrl+S | 透传 |
-| cmd-shift-v | Super+Shift+V | Ctrl+Shift+V | Ctrl+Shift+V |
-| cmd-o | Super+O | Ctrl+O | 透传 |
-| cmd-n | Super+N | Ctrl+N | Ctrl+Shift+N（新窗口） |
-| cmd-t | Super+T | Ctrl+T | Ctrl+Shift+T（新标签） |
-| cmd-w | Super+W | Ctrl+W | Ctrl+Shift+W（关标签） |
-| cmd-q | Super+Q | Ctrl+Q | 透传 |
-| cmd-r | Super+R | Ctrl+R | Ctrl+R（反向搜索） |
-| cmd-shift-r | Super+Shift+R | Ctrl+Shift+R | 透传 |
-| cmd-y | Super+Y | Ctrl+Y | Ctrl+Y（readline yank） |
-| cmd-b | Super+B | Ctrl+B | 透传 |
-| cmd-i | Super+I | Ctrl+I | 透传 |
-| cmd-u | Super+U | Ctrl+U | 透传 |
-| cmd-k | Super+K | Ctrl+K | 透传 |
-| cmd-comma | Super+, | Ctrl+, | 透传 |
-| cmd-slash | Super+/ | Ctrl+/ | 透传 |
-| cmd-equal | Super+= | Ctrl+= | 透传 |
-| cmd-minus | Super+- | Ctrl+- | 透传 |
-| cmd-0 | Super+0 | Ctrl+0 | 透传 |
-| cmd-enter | Super+Enter | Ctrl+Enter | 透传 |
-| cmd-shift-t | Super+Shift+T | Ctrl+Shift+T | 透传 |
-| cmd-shift-w | Super+Shift+W | Ctrl+Shift+W | 透传 |
-| cmd-shift-n | Super+Shift+N | Ctrl+Shift+N | 透传 |
-| cmd-shift-f | Super+Shift+F | Ctrl+Shift+F | 透传 |
-| cmd-shift-h | Super+Shift+H | Ctrl+Shift+H | 透传 |
-| cmd-shift-p | Super+Shift+P | Ctrl+Shift+P | 透传 |
+| id | 物理组合 | GUI 注入 | 终端注入 | 用途 |
+|---|---|---|---|---|
+| cmd-c | Super+C | Ctrl+C | Ctrl+Shift+C（复制） | 复制 |
+| cmd-v | Super+V | Ctrl+V | Ctrl+Shift+V（粘贴） | 粘贴 |
+| cmd-x | Super+X | Ctrl+X | 透传 | 剪切 |
+| cmd-z | Super+Z | Ctrl+Z | 透传 | 撤销 |
+| cmd-shift-z | Super+Shift+Z | Ctrl+Shift+Z | 透传 | 重做 |
+| cmd-a | Super+A | Ctrl+A | 透传 | 全选 |
+| cmd-f | Super+F | Ctrl+F | 透传 | 查找 |
+| cmd-g | Super+G | Ctrl+G | 透传 | 查找下一个 |
+| cmd-shift-g | Super+Shift+G | Ctrl+Shift+G | 透传 | 查找上一个 |
+| cmd-s | Super+S | Ctrl+S | 透传 | 保存 |
+| cmd-shift-v | Super+Shift+V | Ctrl+Shift+V | Ctrl+Shift+V | 无格式粘贴 |
+| cmd-o | Super+O | Ctrl+O | 透传 | 打开文件 |
+| cmd-n | Super+N | Ctrl+N | Ctrl+Shift+N（新窗口） | 新建文档 / 新建窗口 |
+| cmd-t | Super+T | Ctrl+T | Ctrl+Shift+T（新标签） | 新建标签页 |
+| cmd-w | Super+W | Ctrl+W | Ctrl+Shift+W（关标签） | 关闭标签页 / 关闭窗口 |
+| cmd-q | Super+Q | Ctrl+Q | 透传 | 退出应用 |
+| cmd-r | Super+R | Ctrl+R | Ctrl+R（反向搜索） | 刷新 / 终端历史反向搜索 |
+| cmd-shift-r | Super+Shift+R | Ctrl+Shift+R | 透传 | 强制刷新 |
+| cmd-y | Super+Y | Ctrl+Y | Ctrl+Y（readline yank） | 重做（部分应用）/ 粘贴已删除内容 |
+| cmd-b | Super+B | Ctrl+B | 透传 | 加粗 |
+| cmd-i | Super+I | Ctrl+I | 透传 | 斜体 |
+| cmd-u | Super+U | Ctrl+U | 透传 | 下划线 |
+| cmd-k | Super+K | Ctrl+K | 透传 | 插入链接 / 聚焦搜索框 |
+| cmd-comma | Super+, | Ctrl+, | 透传 | 打开偏好设置 |
+| cmd-slash | Super+/ | Ctrl+/ | 透传 | 切换行注释 |
+| cmd-equal | Super+= | Ctrl+= | 透传 | 放大（字体 / 页面） |
+| cmd-minus | Super+- | Ctrl+- | 透传 | 缩小（字体 / 页面） |
+| cmd-0 | Super+0 | Ctrl+0 | 透传 | 缩放重置 |
+| cmd-enter | Super+Enter | Ctrl+Enter | 透传 | 发送 / 提交 |
+| cmd-shift-t | Super+Shift+T | Ctrl+Shift+T | 透传 | 恢复最近关闭的标签页 |
+| cmd-shift-w | Super+Shift+W | Ctrl+Shift+W | 透传 | 关闭窗口 |
+| cmd-shift-n | Super+Shift+N | Ctrl+Shift+N | 透传 | 新建无痕 / 隐私窗口 |
+| cmd-shift-f | Super+Shift+F | Ctrl+Shift+F | 透传 | 在文件中查找（全局搜索） |
+| cmd-shift-h | Super+Shift+H | Ctrl+Shift+H | 透传 | 在文件中替换（IDE） |
+| cmd-shift-p | Super+Shift+P | Ctrl+Shift+P | 透传 | 命令面板（IDE） |
 
 终端列"透传"的原因：这些组合在终端里有破坏性或不同语义，例如 `Ctrl+X`（readline 前缀）、`Ctrl+Z`（挂起进程）、`Ctrl+S`（冻结输出）、`Ctrl+A`（行首）、`Ctrl+F`（前移一字符）、`Ctrl+U`（删至行首）、`Ctrl+K`（删至行尾）、`Ctrl+Q`（XON）。终端内的复制/粘贴统一走 `Ctrl+Shift+C/V`，不碰 `Ctrl+C`。
 
 ### 7.2 默认关闭（已知冲突或语义差异）
 
-| id | 物理组合 | GUI 注入 | 终端注入 | 默认关闭原因 |
-|---|---|---|---|---|
-| cmd-d | Super+D | Ctrl+D | 透传 | Super+D = 显示桌面 |
-| cmd-e | Super+E | Ctrl+E | 透传 | Super+E = 文件管理器 |
-| cmd-l | Super+L | Ctrl+L | 透传 | Super+L = 锁屏 |
-| cmd-p | Super+P | Ctrl+P | 透传 | Super+P = 切换显示模式 |
-| cmd-1 … cmd-9 | Super+1…9 | Ctrl+1…9 | 透传 | Super+1…9 = 工作区/应用切换 |
-| cmd-left | Super+Left | Home | Home | Super+Left = 窗口贴左 |
-| cmd-right | Super+Right | End | End | Super+Right = 窗口贴右 |
-| cmd-up | Super+Up | Ctrl+Home | Ctrl+Home | Super+Up = 最大化 |
-| cmd-down | Super+Down | Ctrl+End | Ctrl+End | Super+Down = 还原窗口 |
-| cmd-shift-left | Super+Shift+Left | Shift+Home | Shift+Home | Super+Shift+Left = 移动窗口到左侧工作区 |
-| cmd-shift-right | Super+Shift+Right | Shift+End | Shift+End | 同上 |
-| cmd-shift-up | Super+Shift+Up | Ctrl+Shift+Home | Ctrl+Shift+Home | 同上，向上移动 |
-| cmd-shift-down | Super+Shift+Down | Ctrl+Shift+End | Ctrl+Shift+End | 同上，向下移动 |
-| cmd-pageup | Super+PageUp | Ctrl+PageUp | 透传 | Super+PageUp = 切换工作区 |
-| cmd-pagedown | Super+PageDown | Ctrl+PageDown | 透传 | Super+PageDown = 切换工作区 |
-| cmd-shift-s | Super+Shift+S | Ctrl+Shift+S | 透传 | Super+Shift+S = 区域截图（GNOME/DDE） |
-| cmd-backspace | Super+Backspace | Ctrl+Backspace | 透传 | 语义不同：macOS 删到行首，Linux `Ctrl+Backspace` 删一个词 |
+| id | 物理组合 | GUI 注入 | 终端注入 | 用途 | 默认关闭原因 |
+|---|---|---|---|---|---|
+| cmd-d | Super+D | Ctrl+D | 透传 | 添加书签 / 复制当前行（应用相关） | Super+D = 显示桌面 |
+| cmd-e | Super+E | Ctrl+E | 透传 | 用选中内容查找 / 居中当前行（应用相关） | Super+E = 文件管理器 |
+| cmd-l | Super+L | Ctrl+L | 透传 | 聚焦地址栏 / 选中当前行 | Super+L = 锁屏 |
+| cmd-p | Super+P | Ctrl+P | 透传 | 打印 | Super+P = 切换显示模式 |
+| cmd-1 … cmd-9 | Super+1…9 | Ctrl+1…9 | 透传 | 切换到第 N 个标签页 / 应用 | Super+1…9 = 工作区/应用切换 |
+| cmd-left | Super+Left | Home | Home | 跳到行首 | Super+Left = 窗口贴左 |
+| cmd-right | Super+Right | End | End | 跳到行尾 | Super+Right = 窗口贴右 |
+| cmd-up | Super+Up | Ctrl+Home | Ctrl+Home | 跳到文档开头 | Super+Up = 最大化 |
+| cmd-down | Super+Down | Ctrl+End | Ctrl+End | 跳到文档结尾 | Super+Down = 还原窗口 |
+| cmd-shift-left | Super+Shift+Left | Shift+Home | Shift+Home | 选中到行首 | Super+Shift+Left = 移动窗口到左侧工作区 |
+| cmd-shift-right | Super+Shift+Right | Shift+End | Shift+End | 选中到行尾 | 同上，向右移动 |
+| cmd-shift-up | Super+Shift+Up | Ctrl+Shift+Home | Ctrl+Shift+Home | 选中到文档开头 | 同上，向上移动 |
+| cmd-shift-down | Super+Shift+Down | Ctrl+Shift+End | Ctrl+Shift+End | 选中到文档结尾 | 同上，向下移动 |
+| cmd-pageup | Super+PageUp | Ctrl+PageUp | 透传 | 上一个标签页 | Super+PageUp = 切换工作区 |
+| cmd-pagedown | Super+PageDown | Ctrl+PageDown | 透传 | 下一个标签页 | Super+PageDown = 切换工作区 |
+| cmd-shift-s | Super+Shift+S | Ctrl+Shift+S | 透传 | 另存为 | Super+Shift+S = 区域截图（GNOME/DDE） |
+| cmd-backspace | Super+Backspace | Ctrl+Backspace | 透传 | 删除到行首（macOS 语义） | 语义不同：macOS 删到行首，Linux `Ctrl+Backspace` 删一个词 |
 
 说明：箭头类绑定若开启，会遮蔽窗口平铺/工作区快捷键；`cmd-left` / `cmd-right` 的 GUI 目标按 macOS 语义取 `Home` / `End`，若更习惯 Linux 的"按词跳转"可在配置里改成 `ctrl+left` / `ctrl+right`。
 
