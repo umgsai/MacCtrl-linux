@@ -98,7 +98,14 @@ impl Machine {
                 }
                 self.flush_pending(code, value)
             }
-            State::Consumed(_) => vec![Out::Pass(ev)],
+            State::Consumed(mapped) => {
+                // 被转换的组合键：其释放与自动重复一并吞掉，避免泄漏到下游。
+                if code == mapped && (value == 0 || value == 2) {
+                    vec![]
+                } else {
+                    vec![Out::Pass(ev)]
+                }
+            }
             _ => vec![Out::Pass(ev)],
         }
     }
@@ -337,6 +344,74 @@ mod tests {
         assert_eq!(
             m.step(Ev::Raw { type_: 4, code: 4, value: 30 }, &t, || Mode::Gui),
             vec![Out::Pass(Ev::Raw { type_: 4, code: 4, value: 30 })]
+        );
+    }
+
+    #[test]
+    fn shift_after_super_matches_shift_binding() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        assert!(m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui).is_empty());
+        let outs = m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
+        let (id, chord, skip) = last_inject(&outs);
+        assert_eq!(id, "cmd-shift-z");
+        assert_eq!(chord, &Chord::parse("ctrl+shift+z").unwrap());
+        assert!(!skip);
+    }
+
+    #[test]
+    fn shift_before_super_is_forwarded_and_not_reinjected() {
+        let t = table();
+        let mut m = Machine::new();
+        assert_eq!(
+            m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui),
+            vec![Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 1))]
+        );
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        let outs = m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
+        let (id, _, skip) = last_inject(&outs);
+        assert_eq!(id, "cmd-shift-z");
+        assert!(skip);
+    }
+
+    #[test]
+    fn mapped_key_release_and_repeat_are_swallowed() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui);
+        assert!(m.step(k(KeyCode::KEY_C, 2), &t, || Mode::Gui).is_empty());
+        assert!(m.step(k(KeyCode::KEY_C, 0), &t, || Mode::Gui).is_empty());
+        assert!(m.step(k(KeyCode::KEY_LEFTMETA, 0), &t, || Mode::Gui).is_empty());
+        assert_eq!(m.step(k(KeyCode::KEY_C, 1), &t, || Mode::Gui)[0], Out::Pass(k(KeyCode::KEY_C, 1)));
+    }
+
+    #[test]
+    fn buffered_shift_release_after_injection_is_swallowed() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_Z, 1), &t, || Mode::Gui);
+        assert!(m.step(k(KeyCode::KEY_Z, 0), &t, || Mode::Gui).is_empty());
+        assert!(m.step(k(KeyCode::KEY_LEFTSHIFT, 0), &t, || Mode::Gui).is_empty());
+    }
+
+    #[test]
+    fn shift_release_flushes_pending_super() {
+        let t = table();
+        let mut m = Machine::new();
+        m.step(k(KeyCode::KEY_LEFTMETA, 1), &t, || Mode::Gui);
+        m.step(k(KeyCode::KEY_LEFTSHIFT, 1), &t, || Mode::Gui);
+        let outs = m.step(k(KeyCode::KEY_LEFTSHIFT, 0), &t, || Mode::Gui);
+        assert_eq!(
+            outs,
+            vec![
+                Out::Pass(k(KeyCode::KEY_LEFTMETA, 1)),
+                Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 1)),
+                Out::Pass(k(KeyCode::KEY_LEFTSHIFT, 0)),
+            ]
         );
     }
 }
