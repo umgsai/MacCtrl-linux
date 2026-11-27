@@ -10,7 +10,7 @@
 
 环境要求：仅支持 X11（`$XDG_SESSION_TYPE=x11`），需要 `input` 组权限与可写的 `/dev/uinput`；Wayland 不支持。
 
-![状态](https://img.shields.io/badge/status-alpha-orange) ![平台](https://img.shields.io/badge/platform-linux%20%7C%20x11-lightgrey) ![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
+![版本](https://img.shields.io/badge/version-1.0.0-brightgreen) ![平台](https://img.shields.io/badge/platform-linux%20%7C%20x11-lightgrey) ![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 
 ## 快速安装
 
@@ -22,7 +22,7 @@ sudo usermod -aG input "$USER"
 sudo udevadm control --reload-rules && sudo udevadm trigger
 
 # 安装 deb
-sudo dpkg -i macctrl_0.1.0-1_amd64.deb
+sudo dpkg -i macctrl_1.0.0-1_amd64.deb
 
 # 重新登录后启用服务
 systemctl --user enable --now macctrl
