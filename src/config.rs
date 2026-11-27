@@ -28,6 +28,11 @@ pub const DEFAULT_TERMINAL_CLASSES: &[&str] = &[
     "sakura",
 ];
 
+/// 未配置终端窗口标题关键字时使用的默认列表。
+///
+/// 用于 WM_CLASS 无法区分场景：FinalShell 等 Java 应用的窗口类统一是 `java-lang-Thread`。
+pub const DEFAULT_TERMINAL_TITLES: &[&str] = &["finalshell"];
+
 #[derive(Debug, Default, Clone, Deserialize)]
 pub struct Config {
     #[serde(default)]
@@ -50,6 +55,9 @@ pub struct DeviceConfig {
 pub struct X11Config {
     #[serde(default)]
     pub terminal_classes: Vec<String>,
+    /// 窗口标题关键字（子串匹配、不区分大小写），补充 WM_CLASS 无法区分的终端。
+    #[serde(default)]
+    pub terminal_titles: Vec<String>,
 }
 
 /// 针对单条绑定的配置覆盖项。
@@ -98,6 +106,22 @@ impl Config {
         } else {
             self.x11
                 .terminal_classes
+                .iter()
+                .map(|s| s.to_ascii_lowercase())
+                .collect()
+        }
+    }
+
+    /// 返回终端窗口标题关键字；未配置时回落到内置默认值。
+    pub fn terminal_titles(&self) -> Vec<String> {
+        if self.x11.terminal_titles.is_empty() {
+            DEFAULT_TERMINAL_TITLES
+                .iter()
+                .map(|s| s.to_string())
+                .collect()
+        } else {
+            self.x11
+                .terminal_titles
                 .iter()
                 .map(|s| s.to_ascii_lowercase())
                 .collect()
@@ -321,6 +345,16 @@ mod tests {
         assert!(cfg
             .apply_cli(&mut list, &[], &["nosuch".to_string()])
             .is_err());
+    }
+
+    #[test]
+    fn default_terminal_titles_used_when_empty() {
+        assert!(parse("")
+            .terminal_titles()
+            .iter()
+            .any(|t| t == "finalshell"));
+        let cfg = parse("[x11]\nterminal_titles = [\"MyTerm\"]\n");
+        assert_eq!(cfg.terminal_titles(), vec!["myterm".to_string()]);
     }
 
     #[test]

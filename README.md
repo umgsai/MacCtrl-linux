@@ -79,6 +79,9 @@ terminal = ""
 # 自定义终端窗口类名（默认已覆盖常见终端）
 [x11]
 terminal_classes = ["myterm"]
+# 窗口标题关键字：Java 系终端（FinalShell 等）的 WM_CLASS 是通用的 java-lang-Thread，
+# 只能靠标题子串识别；默认已内置 "finalshell"
+terminal_titles = ["finalshell", "xshell"]
 
 # 只处理名称包含 Apple 的键盘
 [device]

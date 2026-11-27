@@ -22,11 +22,35 @@ pub fn is_terminal_class(instance: &str, class: &str, whitelist: &[String]) -> b
     whitelist.iter().any(|w| *w == i || *w == c)
 }
 
-/// 根据 WM_CLASS 归类窗口；无法确定窗口类型时按终端处理（fail-safe）。
-pub fn mode_for_wm_class(cls: Option<(String, String)>, classes: &[String]) -> Mode {
+/// 判断窗口标题是否命中终端关键字；子串匹配且不区分大小写。
+pub fn is_terminal_title(title: &str, patterns: &[String]) -> bool {
+    let t = title.to_ascii_lowercase();
+    patterns
+        .iter()
+        .any(|p| !p.is_empty() && t.contains(p.as_str()))
+}
+
+/// 归类窗口：WM_CLASS 或窗口标题命中终端名单即视为终端。
+///
+/// Java 应用（如 FinalShell、IDEA）的 WM_CLASS 统一是 `java-lang-Thread`，
+/// 只能靠标题关键字区分，因此标题作为 WM_CLASS 之外的补充判据。
+/// 无法确定窗口类型时按终端处理（fail-safe）。
+pub fn mode_for_window(
+    cls: Option<(String, String)>,
+    title: Option<&str>,
+    classes: &[String],
+    titles: &[String],
+) -> Mode {
     match cls {
-        Some((instance, class)) if is_terminal_class(&instance, &class, classes) => Mode::Terminal,
-        Some(_) => Mode::Gui,
+        Some((instance, class)) => {
+            let by_class = is_terminal_class(&instance, &class, classes);
+            let by_title = title.is_some_and(|t| is_terminal_title(t, titles));
+            if by_class || by_title {
+                Mode::Terminal
+            } else {
+                Mode::Gui
+            }
+        }
         None => Mode::Terminal, // fail-safe：无法确定窗口类型时按终端处理
     }
 }
@@ -36,6 +60,7 @@ pub struct FocusProbe {
     conn: x11rb::rust_connection::RustConnection,
     root: Window,
     active_atom: u32,
+    net_wm_name_atom: u32,
 }
 
 impl FocusProbe {
@@ -46,22 +71,30 @@ impl FocusProbe {
             .intern_atom(false, b"_NET_ACTIVE_WINDOW")?
             .reply()?
             .atom;
+        let net_wm_name_atom = conn.intern_atom(false, b"_NET_WM_NAME")?.reply()?.atom;
         Ok(Self {
             conn,
             root,
             active_atom,
+            net_wm_name_atom,
         })
     }
 
     /// 任何查询异常都回退到终端模式：误发 Ctrl+Shift+C 无害，误发 Ctrl+C 会杀进程。
-    pub fn mode(&self, classes: &[String]) -> Mode {
+    pub fn mode(&self, classes: &[String], titles: &[String]) -> Mode {
         match self.active_window() {
-            Ok(Some(win)) => mode_for_wm_class(self.wm_class(win).ok().flatten(), classes),
+            Ok(Some(win)) => self.classify(win, classes, titles),
             _ => match self.input_focus() {
-                Ok(Some(win)) => mode_for_wm_class(self.wm_class(win).ok().flatten(), classes),
+                Ok(Some(win)) => self.classify(win, classes, titles),
                 _ => Mode::Terminal,
             },
         }
+    }
+
+    fn classify(&self, win: Window, classes: &[String], titles: &[String]) -> Mode {
+        let cls = self.wm_class(win).ok().flatten();
+        let title = self.wm_name(win).ok().flatten();
+        mode_for_window(cls, title.as_deref(), classes, titles)
     }
 
     fn active_window(&self) -> Result<Option<Window>> {
@@ -100,6 +133,28 @@ impl FocusProbe {
         }
         Ok(None)
     }
+
+    /// 读取窗口标题：优先 `_NET_WM_NAME`（UTF-8），回退 `WM_NAME`。
+    fn wm_name(&self, win: Window) -> Result<Option<String>> {
+        if let Some(name) = self.read_name(win, self.net_wm_name_atom)? {
+            return Ok(Some(name));
+        }
+        self.read_name(win, AtomEnum::WM_NAME.into())
+    }
+
+    fn read_name(&self, win: Window, atom: u32) -> Result<Option<String>> {
+        let reply = self
+            .conn
+            .get_property(false, win, atom, AtomEnum::ANY, 0, 1024)?
+            .reply()?;
+        if reply.value.is_empty() {
+            return Ok(None);
+        }
+        let name = String::from_utf8_lossy(&reply.value)
+            .trim_end_matches('\0')
+            .to_string();
+        Ok(if name.is_empty() { None } else { Some(name) })
+    }
 }
 
 #[cfg(test)]
@@ -137,14 +192,69 @@ mod tests {
     #[test]
     fn missing_wm_class_fails_safe_to_terminal() {
         let wl = classes(&["kitty"]);
-        assert_eq!(mode_for_wm_class(None, &wl), Mode::Terminal);
+        let no_titles: Vec<String> = Vec::new();
+        assert_eq!(mode_for_window(None, None, &wl, &no_titles), Mode::Terminal);
         assert_eq!(
-            mode_for_wm_class(Some(("kitty".to_string(), "kitty".to_string())), &wl),
+            mode_for_window(
+                Some(("kitty".to_string(), "kitty".to_string())),
+                None,
+                &wl,
+                &no_titles
+            ),
             Mode::Terminal
         );
         assert_eq!(
-            mode_for_wm_class(Some(("code".to_string(), "Code".to_string())), &wl),
+            mode_for_window(
+                Some(("code".to_string(), "Code".to_string())),
+                Some("main.rs - Code"),
+                &wl,
+                &no_titles
+            ),
             Mode::Gui
         );
+    }
+
+    #[test]
+    fn java_terminal_is_detected_by_title() {
+        let wl = classes(&["kitty"]);
+        let titles = classes(&["finalshell"]);
+        let java = || {
+            Some((
+                "java-lang-Thread".to_string(),
+                "java-lang-Thread".to_string(),
+            ))
+        };
+        // FinalShell 的 WM_CLASS 是通用 Java 类，只能靠标题识别
+        assert_eq!(
+            mode_for_window(java(), Some("FinalShell 4.6.4"), &wl, &titles),
+            Mode::Terminal
+        );
+        assert_eq!(
+            mode_for_window(java(), Some("Finalshell - 123.45.67.89"), &wl, &titles),
+            Mode::Terminal
+        );
+        // 同样是 java-lang-Thread 的 IDE 不应被误判为终端
+        assert_eq!(
+            mode_for_window(java(), Some("MacCtrl-linux – RustRover"), &wl, &titles),
+            Mode::Gui
+        );
+    }
+
+    #[test]
+    fn title_matching_is_substring_and_case_insensitive() {
+        assert!(is_terminal_title(
+            "FinalShell 4.6.4",
+            &["finalshell".to_string()]
+        ));
+        assert!(is_terminal_title(
+            "my FINALSHELL tab",
+            &["finalshell".to_string()]
+        ));
+        assert!(!is_terminal_title("FinalShell", &[]));
+        assert!(!is_terminal_title("FinalShell", &[String::new()]));
+        assert!(!is_terminal_title(
+            "Some Editor",
+            &["finalshell".to_string()]
+        ));
     }
 }

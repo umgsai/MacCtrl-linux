@@ -8,6 +8,10 @@ exclude_patterns = []
 [x11]
 # 留空 = 使用内置终端白名单（deepin-terminal、gnome-terminal、kitty 等）
 terminal_classes = []
+# 窗口标题关键字（子串、不区分大小写），用于 WM_CLASS 无法区分的终端。
+# FinalShell、Xshell 等 Java 应用的窗口类统一是 java-lang-Thread，只能靠标题识别。
+# 留空 = 使用内置默认值 ["finalshell"]。
+terminal_titles = []
 
 # 开启默认关闭的项
 [bindings.cmd-d]

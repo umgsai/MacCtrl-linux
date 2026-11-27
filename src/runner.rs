@@ -88,6 +88,7 @@ fn run_loop_inner(table: BindingTable, config: Config, dry_run: bool, tray: Opti
     let table_arc = Arc::new(table);
     let table_store = Arc::new(RwLock::new(Arc::clone(&table_arc)));
     let classes = Arc::new(config.terminal_classes());
+    let titles = Arc::new(config.terminal_titles());
     let include = Arc::new(config.device.include_patterns.clone());
     let exclude = Arc::new(config.device.exclude_patterns.clone());
 
@@ -137,6 +138,7 @@ fn run_loop_inner(table: BindingTable, config: Config, dry_run: bool, tray: Opti
                 dev,
                 Arc::clone(&table_store),
                 classes.clone(),
+                titles.clone(),
                 sink.clone(),
                 stop.clone(),
                 paused.clone(),
@@ -219,6 +221,7 @@ fn run_loop_inner(table: BindingTable, config: Config, dry_run: bool, tray: Opti
                         dev,
                         table_store.clone(),
                         classes.clone(),
+                        titles.clone(),
                         sink.clone(),
                         stop.clone(),
                         paused.clone(),
@@ -259,6 +262,7 @@ fn spawn_device(
     mut dev: Device,
     table: Arc<RwLock<Arc<BindingTable>>>,
     classes: Arc<Vec<String>>,
+    titles: Arc<Vec<String>>,
     sink: Arc<Mutex<Sink>>,
     stop: Arc<AtomicBool>,
     paused: Arc<AtomicBool>,
@@ -301,7 +305,7 @@ fn spawn_device(
                     machine.step(ev, &table_ref, || {
                         probe
                             .as_ref()
-                            .map(|p| p.mode(&classes))
+                            .map(|p| p.mode(&classes, &titles))
                             .unwrap_or(Mode::Terminal)
                     })
                 };
