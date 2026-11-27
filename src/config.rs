@@ -202,14 +202,14 @@ impl Config {
     }
 }
 
-/// 默认配置文件路径：$XDG_CONFIG_HOME/cmd2ctrl/config.toml。
+/// 默认配置文件路径：$XDG_CONFIG_HOME/macctrl/config.toml。
 pub fn default_path() -> std::path::PathBuf {
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| {
             std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config")
         });
-    base.join("cmd2ctrl").join("config.toml")
+    base.join("macctrl").join("config.toml")
 }
 
 #[cfg(test)]

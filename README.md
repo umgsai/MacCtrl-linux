@@ -1,4 +1,4 @@
-# cmd2ctrl
+# macctrl
 
 把外接 Mac 键盘上的 **Command** 键组合映射为 **Ctrl** 组合，专为 Linux（X11）桌面设计。
 
@@ -19,23 +19,23 @@ sudo usermod -aG input "$USER"
 sudo udevadm control --reload-rules && sudo udevadm trigger
 
 # 安装 deb
-sudo dpkg -i cmd2ctrl_0.1.0-1_amd64.deb
+sudo dpkg -i macctrl_0.1.0-1_amd64.deb
 
 # 重新登录后启用服务
-systemctl --user enable --now cmd2ctrl
+systemctl --user enable --now macctrl
 ```
 
 ## 卸载
 
 ```bash
 # 停掉用户服务
-systemctl --user disable --now cmd2ctrl
+systemctl --user disable --now macctrl
 
 # 卸载 deb
-sudo dpkg -r cmd2ctrl
+sudo dpkg -r macctrl
 
 # （可选）删除配置文件
-rm -rf ~/.config/cmd2ctrl
+rm -rf ~/.config/macctrl
 
 # （可选）从 input 组移除自己
 gpasswd -d "$USER" input
@@ -56,7 +56,7 @@ cargo deb
 
 ## 配置
 
-默认路径 `~/.config/cmd2ctrl/config.toml`。
+默认路径 `~/.config/macctrl/config.toml`。
 
 ```toml
 # 开启默认关闭的 cmd-d
@@ -97,13 +97,13 @@ cmd-a      → Ctrl+A
 默认 **35 项开启**（高频组合），**25 项关闭**（遮挡桌面快捷键）。完整列表：
 
 ```bash
-cmd2ctrl --list-bindings
+macctrl --list-bindings
 ```
 
 ## CLI
 
 ```
-cmd2ctrl [OPTIONS]
+macctrl [OPTIONS]
 
 选项:
       --config <PATH>       配置文件路径
@@ -150,10 +150,10 @@ src/
   key.rs       # Linux 键码映射
 
 packaging/
-  cmd2ctrl.service      # systemd 用户级服务
-  cmd2ctrl.desktop      # 桌面自启
+  macctrl.service      # systemd 用户级服务
+  macctrl.desktop      # 桌面自启
   99-uinput.rules       # udev 权限规则
-  icons/cmd2ctrl-active.png
+  icons/macctrl-active.png
 
 config/
   config.toml           # 示例配置

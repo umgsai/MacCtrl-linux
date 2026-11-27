@@ -1,4 +1,4 @@
-# cmd2ctrl 示例配置。复制到 ~/.config/cmd2ctrl/config.toml 后按需修改。
+# macctrl 示例配置。复制到 ~/.config/macctrl/config.toml 后按需修改。
 
 [device]
 # 留空 = 处理所有键盘；填入名称子串可限制范围（不区分大小写）

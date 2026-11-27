@@ -1,5 +1,5 @@
 [package]
-name = "cmd2ctrl"
+name = "macctrl"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -34,10 +34,10 @@ equivalent Ctrl combinations, while recognized terminal windows receive the
 original Super chord (or a terminal-safe Ctrl+Shift alternative) so that
 Ctrl+C does not kill the shell."""
 assets = [
-    ["target/release/cmd2ctrl", "usr/bin/cmd2ctrl", "755"],
-    ["packaging/cmd2ctrl.service", "lib/systemd/user/cmd2ctrl.service", "644"],
-    ["packaging/cmd2ctrl.desktop", "usr/share/applications/cmd2ctrl.desktop", "644"],
+    ["target/release/macctrl", "usr/bin/macctrl", "755"],
+    ["packaging/macctrl.service", "lib/systemd/user/macctrl.service", "644"],
+    ["packaging/macctrl.desktop", "usr/share/applications/macctrl.desktop", "644"],
     ["packaging/99-uinput.rules", "lib/udev/rules.d/99-uinput.rules", "644"],
-    ["packaging/icons/cmd2ctrl-active.png", "usr/share/icons/hicolor/32x32/apps/cmd2ctrl.png", "644"],
-    ["config/config.toml", "etc/cmd2ctrl/config.toml", "644"],
+    ["packaging/icons/macctrl.png", "usr/share/icons/hicolor/32x32/apps/macctrl.png", "644"],
+    ["config/config.toml", "etc/macctrl/config.toml", "644"],
 ]

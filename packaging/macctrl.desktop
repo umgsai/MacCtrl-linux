@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=cmd2ctrl
+Name=macctrl
 Comment=Map Mac Command key to Ctrl (terminal-aware)
-Exec=systemctl --user start cmd2ctrl
-Icon=cmd2ctrl
+Exec=systemctl --user start macctrl
+Icon=macctrl
 Terminal=false
 Categories=Utility;
 Keywords=keyboard;remap;command;ctrl;mac;

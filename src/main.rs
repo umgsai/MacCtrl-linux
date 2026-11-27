@@ -21,7 +21,7 @@ use crate::config::Config;
 #[derive(Debug, Parser)]
 #[command(version, about)]
 pub struct Args {
-    /// 配置文件路径（默认 ~/.config/cmd2ctrl/config.toml）
+    /// 配置文件路径（默认 ~/.config/macctrl/config.toml）
     #[arg(long)]
     pub config: Option<PathBuf>,
     /// 只处理名称匹配的键盘（可重复；默认处理所有键盘）
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
                 path.display(),
                 name,
                 is_kb,
-                is_kb && selected && !name.contains("cmd2ctrl")
+                is_kb && selected && !name.contains("macctrl")
             );
         }
         return Ok(());
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn parses_repeatable_flags() {
         let args = Args::parse_from([
-            "cmd2ctrl",
+            "macctrl",
             "--disable",
             "cmd-b",
             "--disable",
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn parses_device_filter() {
-        let args = Args::parse_from(["cmd2ctrl", "--device", "Apple", "--device", "Keychron"]);
+        let args = Args::parse_from(["macctrl", "--device", "Apple", "--device", "Keychron"]);
         assert_eq!(
             args.devices,
             vec!["Apple".to_string(), "Keychron".to_string()]

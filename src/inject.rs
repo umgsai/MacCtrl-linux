@@ -11,10 +11,10 @@ pub enum Sink {
 }
 
 impl Sink {
-    /// 创建名为 cmd2ctrl 的虚拟键盘，仅暴露给定按键能力。
+    /// 创建名为 macctrl 的虚拟键盘，仅暴露给定按键能力。
     pub fn real(keys: &AttributeSet<KeyCode>) -> Result<Self> {
         let dev = VirtualDevice::builder()?
-            .name("cmd2ctrl virtual keyboard")
+            .name("macctrl virtual keyboard")
             .with_keys(keys)?
             .build()
             .context("创建 uinput 设备失败（检查 /dev/uinput 权限与 input 组）")?;

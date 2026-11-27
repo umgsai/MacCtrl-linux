@@ -242,7 +242,7 @@ fn collect_keyboards(include: &[String], exclude: &[String]) -> Vec<(PathBuf, De
     evdev::enumerate()
         .filter(|(_, dev)| {
             dev.name()
-                .map(|n| device::matches_filters(n, include, exclude) && !n.contains("cmd2ctrl"))
+                .map(|n| device::matches_filters(n, include, exclude) && !n.contains("macctrl"))
                 .unwrap_or(false)
         })
         .filter(|(_, dev)| {
