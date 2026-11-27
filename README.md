@@ -1,13 +1,16 @@
 # MacCtrl
 
-把外接 Mac 键盘上的 **Command** 键组合映射为 **Ctrl** 组合，专为 Linux（X11）桌面设计。
+在 Linux（X11）上使用 Mac 键盘时，把 **Command** 键组合映射为 **Ctrl** 键组合的托盘常驻工具。
 
-- **终端感知**：在终端窗口里，`Ctrl+C` 不会杀进程；默认透传 Super 组合，或用安全的 `Ctrl+Shift+C` 替代
-- **多键盘统一处理**：内置、USB、蓝牙键盘同时存在时全部接管
-- **系统托盘**：暂停/继续、重载配置、列出绑定、退出，托盘菜单直接控制
-- **零后台进程**：每个键盘一个设备线程，`Ctrl+C` 进程退出自动释放所有抓取
+- **终端安全**：在终端窗口里 `Cmd+C` 映射为 `Ctrl+Shift+C`，不会误杀进程；没有安全替代的组合直接透传原始 Super 组合
+- **所有键盘统一接管**：内置键盘、USB / 蓝牙外接键盘同时存在时全部生效，也可按设备名筛选
+- **托盘 + 应用入口**：托盘菜单提供暂停/继续、重载配置、查看绑定、打开配置、退出；桌面应用列表里点击图标即可启动，已在运行时不会重复启动
+- **可逐项开关**：内置 60 项快捷键目录，35 项默认开启、25 项默认关闭（避免遮蔽桌面快捷键），配置文件可单独覆盖
+- **退出即释放**：进程退出或崩溃时自动释放全部键盘抓取，不留卡键
 
-![状态](https://img.shields.io/badge/status-alpha-orange) ![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
+环境要求：仅支持 X11（`$XDG_SESSION_TYPE=x11`），需要 `input` 组权限与可写的 `/dev/uinput`；Wayland 不支持。
+
+![状态](https://img.shields.io/badge/status-alpha-orange) ![平台](https://img.shields.io/badge/platform-linux%20%7C%20x11-lightgrey) ![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 
 ## 快速安装
 
@@ -151,7 +154,7 @@ src/
 
 packaging/
   macctrl.service      # systemd 用户级服务
-  macctrl.desktop      # 桌面自启
+  macctrl.desktop      # 桌面应用入口（点击启动服务）
   99-uinput.rules       # udev 权限规则
   icons/macctrl.png
 
