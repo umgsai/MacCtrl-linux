@@ -1,0 +1,17 @@
+[package]
+name = "cmd2ctrl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+env_logger = "0.11"
+evdev = "0.13"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+x11rb = "0.13"
+
+[dev-dependencies]
+tempfile = "3"
