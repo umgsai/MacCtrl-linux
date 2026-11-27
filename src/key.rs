@@ -48,7 +48,11 @@ pub struct Chord {
 impl Chord {
     /// 解析 "ctrl+c" / "ctrl+shift+c" / "home"。
     pub fn parse(s: &str) -> Result<Self> {
-        let parts: Vec<&str> = s.split('+').map(str::trim).filter(|p| !p.is_empty()).collect();
+        let parts: Vec<&str> = s
+            .split('+')
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .collect();
         if parts.is_empty() {
             bail!("空的按键序列");
         }
@@ -147,7 +151,10 @@ pub fn parse_key(name: &str) -> Option<KeyCode> {
     if n.len() == 1 {
         let b = n.as_bytes()[0];
         if b.is_ascii_lowercase() {
-            return LETTER_KEYS.iter().find(|(ch, _)| *ch == b as char).map(|(_, code)| *code);
+            return LETTER_KEYS
+                .iter()
+                .find(|(ch, _)| *ch == b as char)
+                .map(|(_, code)| *code);
         }
         if (b'1'..=b'9').contains(&b) {
             return Some(KeyCode::new(KeyCode::KEY_1.0 + (b - b'1') as u16));
@@ -235,13 +242,25 @@ mod tests {
     #[test]
     fn parse_simple_key() {
         let p = KeyPattern::parse("z").unwrap();
-        assert_eq!(p, KeyPattern { shift: false, code: KeyCode::KEY_Z });
+        assert_eq!(
+            p,
+            KeyPattern {
+                shift: false,
+                code: KeyCode::KEY_Z
+            }
+        );
     }
 
     #[test]
     fn parse_shift_key() {
         let p = KeyPattern::parse("shift+z").unwrap();
-        assert_eq!(p, KeyPattern { shift: true, code: KeyCode::KEY_Z });
+        assert_eq!(
+            p,
+            KeyPattern {
+                shift: true,
+                code: KeyCode::KEY_Z
+            }
+        );
         assert_eq!(p.label(), "super+shift+z");
     }
 

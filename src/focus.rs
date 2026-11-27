@@ -37,7 +37,11 @@ impl FocusProbe {
             .intern_atom(false, b"_NET_ACTIVE_WINDOW")?
             .reply()?
             .atom;
-        Ok(Self { conn, root, active_atom })
+        Ok(Self {
+            conn,
+            root,
+            active_atom,
+        })
     }
 
     /// 任何查询异常都回退到终端模式：误发 Ctrl+Shift+C 无害，误发 Ctrl+C 会杀进程。
@@ -112,7 +116,11 @@ mod tests {
         let wl = classes(&["deepin-terminal", "kitty"]);
         assert!(is_terminal_class("deepin-terminal", "Deepin-terminal", &wl));
         assert!(is_terminal_class("kitty", "kitty", &wl));
-        assert!(!is_terminal_class("deepin-terminal-helper", "Deepin-terminal-helper", &wl));
+        assert!(!is_terminal_class(
+            "deepin-terminal-helper",
+            "Deepin-terminal-helper",
+            &wl
+        ));
         assert!(!is_terminal_class("code", "Code", &wl));
     }
 }

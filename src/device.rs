@@ -24,7 +24,12 @@ mod tests {
 
     fn keyboard_keys() -> AttributeSet<KeyCode> {
         let mut s = AttributeSet::new();
-        for k in [KeyCode::KEY_A, KeyCode::KEY_Z, KeyCode::KEY_SPACE, KeyCode::KEY_ENTER] {
+        for k in [
+            KeyCode::KEY_A,
+            KeyCode::KEY_Z,
+            KeyCode::KEY_SPACE,
+            KeyCode::KEY_ENTER,
+        ] {
             s.insert(k);
         }
         s

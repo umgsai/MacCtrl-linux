@@ -48,8 +48,7 @@ pub struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
     env_logger::Builder::from_env(
-        env_logger::Env::default()
-            .default_filter_or(if args.verbose { "debug" } else { "info" }),
+        env_logger::Env::default().default_filter_or(if args.verbose { "debug" } else { "info" }),
     )
     .init();
 
@@ -108,7 +107,14 @@ mod tests {
     #[test]
     fn parses_repeatable_flags() {
         let args = Args::parse_from([
-            "cmd2ctrl", "--disable", "cmd-b", "--disable", "cmd-i", "--enable", "cmd-d", "--dry-run",
+            "cmd2ctrl",
+            "--disable",
+            "cmd-b",
+            "--disable",
+            "cmd-i",
+            "--enable",
+            "cmd-d",
+            "--dry-run",
         ]);
         assert_eq!(args.disable, vec!["cmd-b".to_string(), "cmd-i".to_string()]);
         assert_eq!(args.enable, vec!["cmd-d".to_string()]);
@@ -118,6 +124,9 @@ mod tests {
     #[test]
     fn parses_device_filter() {
         let args = Args::parse_from(["cmd2ctrl", "--device", "Apple", "--device", "Keychron"]);
-        assert_eq!(args.devices, vec!["Apple".to_string(), "Keychron".to_string()]);
+        assert_eq!(
+            args.devices,
+            vec!["Apple".to_string(), "Keychron".to_string()]
+        );
     }
 }
