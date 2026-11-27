@@ -85,7 +85,7 @@
 | SuperPending | 其他修饰键（Ctrl/Alt/Shift）按下 | 转发 Super 按下 + 该修饰键 | SuperForwarded |
 | SuperPending | 重复键（Super auto-repeat） | 无 | SuperPending |
 | SuperPending | Super 松开 | 注入 Super 按下+松开（启动器/修饰键语义保留） | Idle |
-| SuperPending | 其他输入（鼠标事件等） | 原样转发 | SuperPending |
+| SuperPending | 非按键事件（EV_MSC / EV_SYN / LED 等） | 原样转发 | SuperPending |
 | SuperForwarded | 任意事件（含 Super 松开） | 原样转发 | Super 松开后 Idle |
 | Consumed | 白名单键松开 / 重复键 | 无 | Consumed |
 | Consumed | 其他普通键按下/松开 | 原样转发（此时 Super 未被按下，按键为无修饰原键） | Consumed |
@@ -93,6 +93,7 @@
 
 补充规则：
 
+- **"白名单键"的判定分两步**：先按当前焦点类型选出 GUI 表或终端表；若该键在表中有映射，按"有映射"处理（进入 `Consumed`）；若无映射（例如终端模式下的 `x/z/s/a/f/q`），按"非白名单键"处理，透传原始 Super 组合（进入 `SuperForwarded`）。
 - 白名单键的**松开事件**在 `Consumed` 状态一律吞掉，避免目标应用收到"只有松开没有按下"的异常序列。
 - 注入 chord 时先注入修饰键、再注入主键、再逆序释放修饰键，每个事件后附 `SYN_REPORT`。
 - 按住白名单组合不放时，不做 chord 重复注入，避免影响目标应用的按键重复逻辑。
@@ -107,7 +108,7 @@
 1. 通过 x11rb 连接 `DISPLAY`，在 root 窗口读取 `_NET_ACTIVE_WINDOW` 属性（`WINDOW` 类型）。
 2. 若失败或无值，回退 `GetInputFocus`，若焦点为 `PointerRoot`/`None` 则视为非终端。
 3. 读取该窗口 `WM_CLASS`，得到 `(instance, class)`，两者转小写后与终端白名单做精确匹配（非子串匹配，避免误伤）。
-4. 结果（terminal / gui）缓存最近一次查询结果，但每次白名单按键按下时重新查询一次，保证焦点切换立即生效。
+4. 每次被接管的组合键按下时重新查询一次，保证焦点切换立即生效；不做跨按键缓存。若实测查询耗时影响输入手感，再引入"缓存 + 事件驱动刷新"策略（见第 14 节）。
 
 默认终端白名单：
 
