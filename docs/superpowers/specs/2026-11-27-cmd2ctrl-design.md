@@ -1,7 +1,7 @@
 # cmd2ctrl 设计文档
 
 - 日期：2026-11-27
-- 目标平台：Deepin 25 / X11 / DDE
+- 目标平台：Linux / X11（不限发行版与桌面环境；Deepin 25 + DDE 仅为当前验证环境）
 - 状态：待实现
 
 ## 1. 背景
@@ -12,7 +12,7 @@
 
 - 普通 GUI 窗口：`Cmd+X` → `Ctrl+X`
 - 终端窗口：`Cmd+C` → `Ctrl+Shift+C`（复制）、`Cmd+V` → `Ctrl+Shift+V`（粘贴），物理 `Ctrl+C` 保持原样（中断）
-- 白名单之外的 Super 组合原样交给桌面环境，不破坏 DDE 的 Super+E / Super+D / Super+方向键 / Super 启动器等快捷键
+- 白名单之外的 Super 组合原样交给桌面环境，不破坏 DDE / GNOME / KDE / XFCE 等桌面自身的 Super+E / Super+D / Super+方向键 / Super 启动器等快捷键
 
 ## 2. 目标与非目标
 
@@ -31,7 +31,18 @@
 - 输入法、应用内部快捷键的改写。
 - 鼠标按键、媒体键、Fn 键的特殊处理（一律透传）。
 
-## 3. 环境事实（已实测）
+### 适用范围与环境要求
+
+实现只依赖 Linux 通用机制，不对任何发行版或桌面环境做硬绑定：
+
+- **输入层**：`evdev`（`/dev/input/event*`）与 `uinput`，属于内核通用接口。
+- **焦点层**：X11 + EWMH（`_NET_ACTIVE_WINDOW`、`WM_CLASS`）；非 EWMH 的窗口管理器通过 `GetInputFocus` 回退，仍可工作。
+- **桌面环境**：DDE、GNOME（Xorg 会话）、KDE Plasma（Xorg 会话）、XFCE、Cinnamon、MATE、LXDE 等均可，不依赖 DDE 专有 D-Bus 接口或配置路径。
+- **终端**：按 `WM_CLASS` 识别，不依赖具体终端的私有 IPC；终端键位差异通过配置覆盖。
+
+发行版差异只体现在**安装步骤**（udev 规则、用户组、systemd/自启动方式），由第 10 节给出通用做法与常见变体，代码中不出现发行版判断。
+
+## 3. 当前验证环境（仅作参考，并非限定）
 
 | 项 | 值 |
 |---|---|
@@ -43,7 +54,7 @@
 | 用户组 | 当前用户不在 `input` 组 |
 | 输入设备 | 当前未连接外接键盘，仅有内置 `AT Translated Set 2 keyboard` |
 
-结论：设备不可写死路径，必须按名称/VID-PID 匹配；uinput 需要 udev 规则 + 加入 `input` 组。
+结论：设备不可写死路径，必须按名称/VID-PID 匹配；uinput 通常需要 udev 规则 + 加入 `input` 组（部分发行版已预置规则，见第 10 节）。以上仅为一种参考环境，代码不得据此硬编码。
 
 ## 4. 总体架构
 
@@ -61,7 +72,7 @@
 └──────────────────────────────────────────────────┘
         │ 虚拟键盘事件
         ▼
-  GUI 应用 / 终端模拟器（DDE 照旧接收未被接管的 Super 组合）
+  GUI 应用 / 终端模拟器（桌面环境照旧接收未被接管的 Super 组合）
 ```
 
 线程模型：单线程事件循环即可。evdev 读取阻塞等待，X11 查询为同步短请求（每次按键 <1ms），uinput 写入非阻塞。若实测焦点查询拖慢输入，再改为后台刷新焦点缓存 + 按键时读取缓存。
@@ -105,16 +116,17 @@
 
 ## 6. 终端识别
 
-1. 通过 x11rb 连接 `DISPLAY`，在 root 窗口读取 `_NET_ACTIVE_WINDOW` 属性（`WINDOW` 类型）。
-2. 若失败或无值，回退 `GetInputFocus`，若焦点为 `PointerRoot`/`None` 则视为非终端。
-3. 读取该窗口 `WM_CLASS`，得到 `(instance, class)`，两者转小写后与终端白名单做精确匹配（非子串匹配，避免误伤）。
+1. 通过 x11rb 连接 `DISPLAY`，在 root 窗口读取 `_NET_ACTIVE_WINDOW` 属性（`WINDOW` 类型，EWMH 标准，DDE / GNOME / KDE / XFCE 等均实现）。
+2. 若无该属性（非 EWMH 窗口管理器），回退 `GetInputFocus`；若焦点为 `PointerRoot`/`None` 则视为非终端。
+3. 从焦点窗口向上查找，直到找到带有 `WM_CLASS` 的窗口（应对部分程序把输入焦点交给无 `WM_CLASS` 的子窗口）。读取 `WM_CLASS` 得到 `(instance, class)`，两者转小写后与终端白名单做精确匹配（非子串匹配，避免误伤）。
 4. 每次被接管的组合键按下时重新查询一次，保证焦点切换立即生效；不做跨按键缓存。若实测查询耗时影响输入手感，再引入"缓存 + 事件驱动刷新"策略（见第 14 节）。
 
-默认终端白名单：
+默认终端白名单（覆盖主流发行版常见终端，可按需配置）：
 
 ```
-deepin-terminal, gnome-terminal, konsole, xfce4-terminal, xterm, urxvt,
-alacritty, kitty, wezterm, tilix, terminator, st, mate-terminal, lxterminal
+deepin-terminal, gnome-terminal, kgx, konsole, xfce4-terminal, xterm, urxvt,
+alacritty, kitty, wezterm, tilix, terminator, st, mate-terminal, lxterminal,
+qterminal, sakura
 ```
 
 **失败回退策略**：X11 连接失败或属性读取异常时，按**终端表**处理。理由：GUI 中误发 `Ctrl+Shift+C` 无副作用，而终端中误发 `Ctrl+C` 会中断用户进程，两者代价不对称。
@@ -142,7 +154,7 @@ IDE（VS Code / Cursor 等）不列入白名单，按 GUI 处理：它们内置�
 | Super+Y | Ctrl+Y | readline yank（安全） |
 | Super+X / Z / S / A / F / Q | 透传原始 Super 组合 | 避免 `Ctrl+Z` 挂起进程、`Ctrl+S` 冻结输出等破坏性行为 |
 
-上述终端快捷键以 Deepin Terminal 默认键位为准。不同终端若改过键位，可通过配置文件的 `[terminal_map]` 覆盖。
+上表终端快捷键遵循主流终端（Deepin Terminal、GNOME Terminal、Konsole、Xfce4 Terminal、Tilix、Alacritty、Kitty、WezTerm 等）的默认键位。`xterm` / `urxvt` 的复制粘贴默认键位不同，若使用需在 `[terminal_map]` 中覆盖。任何终端的键位被用户改过时，同样通过配置覆盖，不改代码。
 
 ## 8. 配置
 
@@ -156,9 +168,9 @@ name_patterns = ["apple", "magic keyboard", "keychron", "usb keyboard"]
 [x11]
 # 终端窗口 WM_CLASS 白名单（小写，精确匹配）
 terminal_classes = [
-  "deepin-terminal", "gnome-terminal", "konsole", "xfce4-terminal",
+  "deepin-terminal", "gnome-terminal", "kgx", "konsole", "xfce4-terminal",
   "xterm", "urxvt", "alacritty", "kitty", "wezterm", "tilix",
-  "terminator", "st", "mate-terminal", "lxterminal",
+  "terminator", "st", "mate-terminal", "lxterminal", "qterminal", "sakura",
 ]
 
 [gui_map]
@@ -202,38 +214,45 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--dry-
 
 ## 10. 权限与部署
 
-1. 写入 `/etc/udev/rules.d/99-uinput.rules`：
+以下为通用步骤；不同发行版/桌面的差异以"变体"标注，代码与文档均不假设 DDE 或 systemd 一定存在。
+
+1. 确认 `/dev/uinput` 权限：`ls -l /dev/uinput`。若已是 `root:input 0660` 或用户可写，则跳过本步与第 2 步。
+2. 写入 udev 规则 `/etc/udev/rules.d/99-uinput.rules`（文件名可自定，需 `.rules` 后缀）：
 
    ```
    KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE="0660"
    ```
 
-   执行 `sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=uinput`。
+   执行 `sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=uinput`（非 systemd 发行版对应为 `udevadm` 单独执行）。
 
-2. `sudo usermod -aG input "$USER"`，重新登录生效（`id -nG` 应包含 `input`）。
+3. `sudo usermod -aG input "$USER"`，重新登录生效（`id -nG` 应包含 `input`）。
+   - 变体：若发行版使用 `uinput` 专用组或已有预置规则，按 `ls -l /dev/uinput` 的属组加入对应组。
+   - 变体：无法改权限时，以 root 运行同一二进制（文档注明，不作为默认路径）。
 
-3. `cargo build --release`，二进制安装到 `~/.local/bin/cmd2ctrl`。
+4. `cargo build --release`，二进制安装到 `~/.local/bin/cmd2ctrl`（或任意 `PATH` 内路径）。
 
-4. systemd user 服务 `~/.config/systemd/user/cmd2ctrl.service`：
+5. 设置登录自启，二选一：
+   - **systemd 发行版**：user 服务 `~/.config/systemd/user/cmd2ctrl.service`：
 
-   ```ini
-   [Unit]
-   Description=Map Mac Command key to Ctrl with terminal-aware handling
-   After=graphical-session.target
-   PartOf=graphical-session.target
+     ```ini
+     [Unit]
+     Description=Map Mac Command key to Ctrl with terminal-aware handling
+     After=graphical-session.target
+     PartOf=graphical-session.target
 
-   [Service]
-   ExecStart=%h/.local/bin/cmd2ctrl
-   Restart=on-failure
-   RestartSec=3
+     [Service]
+     ExecStart=%h/.local/bin/cmd2ctrl
+     Restart=on-failure
+     RestartSec=3
 
-   [Install]
-   WantedBy=graphical-session.target
-   ```
+     [Install]
+     WantedBy=graphical-session.target
+     ```
 
-   启用：`systemctl --user daemon-reload && systemctl --user enable --now cmd2ctrl`。
+     启用：`systemctl --user daemon-reload && systemctl --user enable --now cmd2ctrl`。
+   - **非 systemd 或需要跟随具体桌面会话**：`~/.config/autostart/cmd2ctrl.desktop`，`Exec=.../cmd2ctrl`，由 XDG autostart 拉起。
 
-5. 无法修改 udev/用户组时的降级方式：以 root 运行同一二进制（文档中注明，不作为默认路径）。
+6. 启动时检测 `XDG_SESSION_TYPE`；非 `x11` 时打印明确提示并以非零码退出（避免在 Wayland 下静默失效）。
 
 ## 11. 故障处理与安全
 
@@ -258,13 +277,14 @@ cmd2ctrl [--config <path>] [--device <name-pattern>]... [--list-devices] [--dry-
 ### 手工验证清单
 
 1. 文本编辑器：`Cmd+C/V/X/Z/S/A/F` 均等价于 `Ctrl+*`。
-2. deepin-terminal：`Cmd+C` 复制选中文本；无选中时按 `Cmd+C` 不影响 `sleep 100`；`Cmd+V` 粘贴。
+2. 终端（当前环境 deepin-terminal，其他环境至少再验证一个终端）：`Cmd+C` 复制选中文本；无选中时按 `Cmd+C` 不影响 `sleep 100`；`Cmd+V` 粘贴。
 3. 终端内物理 `Ctrl+C` 仍中断 `sleep 100`；`Ctrl+Z`、`Ctrl+S` 行为不变。
 4. `Cmd+T/W/N` 在终端内为新建/关闭标签页、新建窗口；在浏览器中为新建/关闭标签页、新窗口。
-5. `Super+E`、`Super+D`、`Super+方向键`、单独按 Super 行为与未安装时一致。
+5. 桌面环境自身的 Super 组合（如 Super+E、Super+D、Super+方向键、单独按 Super）行为与未安装时一致；换桌面环境时按各自绑定重测该项。
 6. 按住 `Cmd+C` 不产生连续注入；快速连按无丢键。
 7. 拔出键盘再由守护进程重连后功能恢复；杀掉守护进程后键盘立即可用。
 8. `--dry-run` 在 GUI 与终端中输出的判定与 chord 正确。
+9. 在非 EWMH 或不同桌面环境下，`--verbose` 显示焦点查询走了哪条路径且判定正确。
 
 ## 13. 工程结构
 
@@ -282,7 +302,8 @@ cmd2ctrl-linux/
 ├── config/config.toml # 示例配置
 ├── packaging/
 │   ├── 99-uinput.rules
-│   └── cmd2ctrl.service
+│   ├── cmd2ctrl.service
+│   └── cmd2ctrl.desktop
 └── docs/superpowers/specs/2026-11-27-cmd2ctrl-design.md
 ```
 
@@ -292,9 +313,10 @@ cmd2ctrl-linux/
 
 | 风险 | 应对 |
 |---|---|
-| 终端默认键位与 Deepin Terminal 实际配置不一致 | `terminal_map` 可覆盖；实现后按手工清单第 2、4 项核对一次 |
+| 终端默认键位与用户实际配置不一致（不同终端/自定义键位） | `terminal_map` 可覆盖；默认表覆盖主流终端，xterm/urxvt 等需按需配置 |
 | 焦点查询延迟影响输入手感 | 先直接查询；若不达标改为缓存 + 后台刷新 |
 | 多个外接键盘同时匹配 | 全部抓取，行为一致；`--list-devices` 帮助确认 |
 | 蓝牙键盘路径变化 | 按名称匹配而非路径；重连循环为 2 秒 |
-| 与 DDE 全局快捷键冲突 | 白名单仅覆盖编辑/应用类组合，桌面组合不接管；上线后按清单第 5 项验证 |
+| 与桌面环境全局快捷键冲突（DDE/GNOME/KDE 等 Super 绑定各不相同） | 白名单仅覆盖编辑/应用类组合，桌面组合不接管；换桌面时按清单第 5 项验证，必要时调整白名单 |
+| 非 EWMH 窗口管理器下焦点判定失效 | `GetInputFocus` + 向上查找带 `WM_CLASS` 的祖先窗口；仍失败则回退终端表 |
 | Wayland 会话 | v1 不支持，启动时检测 `XDG_SESSION_TYPE` 并给出明确提示后退出 |
