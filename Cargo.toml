@@ -2,6 +2,8 @@
 name = "cmd2ctrl"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Map Mac Command key to Ctrl with terminal-aware handling"
 
 [dependencies]
 anyhow = "1"
@@ -11,7 +13,31 @@ evdev = "0.13"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
+tray-icon = "0.15"
+gtk = "0.18"
 x11rb = "0.13"
 
 [dev-dependencies]
 tempfile = "3"
+
+[package.metadata.deb]
+maintainer = "umgsai <umgsai@users.noreply.github.com>"
+copyright = "2026, umgsai"
+depends = "$auto, libx11-6, libgtk-3-0, libayatana-appindicator3-1"
+section = "utility"
+priority = "optional"
+extended-description = """\
+Map Mac Command key to Ctrl with terminal-aware handling.
+
+When running under X11, Super (Command) key combinations are remapped to the
+equivalent Ctrl combinations, while recognized terminal windows receive the
+original Super chord (or a terminal-safe Ctrl+Shift alternative) so that
+Ctrl+C does not kill the shell."""
+assets = [
+    ["target/release/cmd2ctrl", "usr/bin/cmd2ctrl", "755"],
+    ["packaging/cmd2ctrl.service", "lib/systemd/user/cmd2ctrl.service", "644"],
+    ["packaging/cmd2ctrl.desktop", "usr/share/applications/cmd2ctrl.desktop", "644"],
+    ["packaging/99-uinput.rules", "lib/udev/rules.d/99-uinput.rules", "644"],
+    ["packaging/icons/cmd2ctrl-active.png", "usr/share/icons/cmd2ctrl.png", "644"],
+    ["config/config.toml", "etc/cmd2ctrl/config.toml", "644"],
+]
